@@ -60,6 +60,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include "bcsjTimer.h"
+#include <OneButton.h>
 
 //------------Setup sensor debounce from Bounce2 library-----
 #define mainSensInpin  26
@@ -106,8 +107,15 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 //--- Setup a RotaryEncoder for pins A2 and A3:
 RotaryEncoder encoder(16, 17);
 byte lastPos = -1;                   //--- Last known rotary position.
-const int rotarySwitch   = 13;       //---Setup Rotary Encoder switch on 
+//const int rotarySwitch   = 13;       //---Setup Rotary Encoder switch on 
                                      //   pin 13 - active low ----------- 
+OneButton button1(13, true);    // Setup a new OneButton on pin 13
+
+//--OneButton Functions for RotaryEncoder switch
+void click1();
+void doubleclick1();
+void longPressStart1();
+
 
 //------RotaryEncoder Setup and variables are in this section---------
 byte tracknumChoice  = ROTARYMAX;
@@ -126,12 +134,13 @@ void readEncoder();           //--RotaryEncoder Function------------------
 void bandoText(String text, int x, int y, int size, boolean d);
 
 //---------------SETUP STATE Machine and State Functions----------------------
-enum {HOUSEKEEP, STAND_BY, TRACK_SETUP, TRACK_ACTIVE, OCCUPIED,} mode;
+enum {HOUSEKEEP, STAND_BY, TRACK_SETUP, TRACK_ACTIVE, OCCUPIED, MENU} mode;
 void runHOUSEKEEP();
 void runSTAND_BY();
 void runTRACK_SETUP();
 void runTRACK_ACTIVE();
 void runOCCUPIED();
+void runMENU();
 void leaveTrack_Setup();
 void leaveTrack_Active();
 
@@ -175,7 +184,7 @@ byte      bailOut    = 1;  //active low
 void setup() 
 {
   Serial.begin(115200);
-  delay(2000);  //time to bring up serial monitor
+  delay(1000);  //time to bring up serial monitor
   //tracknumLast = ROTARYMAX;
   
   
@@ -199,10 +208,14 @@ void setup()
   pinMode(trackPowerLED_PIN, OUTPUT);
   //----END DEBUG---------------
 
-  encoder.setPosition(ROTARYMIN / ROTARYSTEPS); // start with the value of ROTARYMIN 
+  encoder.setPosition(ROTARYMIN / ROTARYSTEPS); // start with the value of ROTARYMIN
 
-  pinMode(rotarySwitch, INPUT_PULLUP);
-  //mode = HOUSEKEEP;
+  button1.attachClick(click1);
+  button1.attachDoubleClick(doubleclick1);
+  button1.attachLongPressStart(longPressStart1); 
+
+  //pinMode(rotarySwitch, INPUT_PULLUP);  //replaced by button1
+  
 
   digitalWrite(trackPowerLED_PIN, HIGH);
   display.clearDisplay();
@@ -249,6 +262,10 @@ void loop()
   else if (mode == OCCUPIED)
   {
     runOCCUPIED();
+  }
+
+  else if (mode == MENU){
+    runMENU();
   }
   
   //----debug terminal print----------------
@@ -342,14 +359,13 @@ void runSTAND_BY()
   Serial.println("-----------------------------------------STAND_BY---");
   do
   {    
-    if(timerOLED.done() == true){         //--check display sleep timer
-      display.ssd1306_command(0xAE);      //--turn off display if timed out
+    if(timerOLED.done() == true){       //--check display sleep timer
+    display.ssd1306_command(0xAE);      //--turn off display if timed out
     }
     
     readEncoder();
-    //Serial.println("readEncoder");  //debug
-    knobToggle = digitalRead(rotarySwitch);
-        
+    button1.tick();
+            
     readAllSens();
     if((mainSens_Report > 0) || (revSens_Report > 0))
     {
@@ -527,21 +543,19 @@ void readEncoder()
     newPos = ROTARYMAX;
   } 
 
-  if (lastPos != newPos) 
-  {
+  if (lastPos != newPos) {
     lastPos = newPos;
     tracknumChoice = newPos;
-    //Serial.println("second if");
-
+    
     display.ssd1306_command(0xAF);
-    Serial.print(newPos);   //added ln
+    Serial.print(newPos);   
     Serial.println();
     Serial.print("Choice: ");
     Serial.println(tracknumChoice);
     Serial.print("Active: ");
     Serial.println(tracknumActive);
     Serial.print("Last: ");
-    Serial.println(tracknumLast); */
+    Serial.println(tracknumLast); 
     delay(50);
 
     timerOLED.start(interval_OLED);   //--sleep timer for STAND_BY mode
@@ -558,7 +572,17 @@ void readEncoder()
     bandoText("TRACK POWER  -OFF-",0,56,1,true);
     
   }
-}     
+} 
+
+void runMENU()
+{
+  display.ssd1306_command(0xAF);
+  display.clearDisplay();
+  bandoText("SETUP MENU",0,0,2,false);
+  bandoText("DEMO ONLY",0,20,2,false);
+  bandoText("LATER, DUDE",0,56,1,true);
+  mode = HOUSEKEEP;
+}
 
 //---------------------Updating Sensor Functions------------------
 //  All functions in this section update and track sensor information: 
@@ -587,15 +611,13 @@ void readMainSens() {
     
   debouncer2.update();                 //--read mainOut sensor
   int mainOutValue = debouncer2.read();
-
-                                       //--update history register:*Sens_Report    
+                                       //--update history register: *Sens_Report    
   if(mainOutValue != mainOut_LastValue)   
     {
       if(mainOutValue == 0) bitSet(mainSens_Report, 1);
       else bitClear(mainSens_Report, 1); 
 
       mainOut_LastValue = mainOutValue;
-
                                         /*--add running total to "*"SensTotal to 
                                         track PassBy status                    */
       if (mainSens_Report > 0) 
@@ -716,6 +738,30 @@ void bandoText(String text, int x, int y, int size, boolean d){
   if(d){
     display.display();
   }
+}  //--display function end
+
+//----------Rotary Encoder Click Functions----------- -----------//
+
+void click1() {                     //--wake display on single click
+  display.ssd1306_command(0xAF);    //--turn on display
+  timerOLED.start(interval_OLED);   //--sleep timer 
+  enum {BufSize=3};  
+  char buf[BufSize];
+  snprintf (buf, BufSize, "%2d", tracknumChoice);
+  display.clearDisplay();
+  bandoText("SELECT NOW",0,0,2,false);
+  bandoText("TRACK",0,20,2,false);
+  if(tracknumChoice == ROTARYMAX) bandoText("RevL",70,20,2,false);
+  else bandoText(buf,80,20,2,false);
+  bandoText("PUSH BUTTON TO SELECT",0,46,1,false);
+  bandoText("TRACK POWER  -OFF-",0,56,1,true);
+} // click1
+
+
+void doubleclick1(){                //--double click: read track, goto setup
+  knobToggle = false;                
 }
 
-//--------------------------------------------------
+void longPressStart1(){             //--hold for 3 seconds goto Main Setup Menu
+  runMENU();
+}
