@@ -7,7 +7,7 @@
 // The repository has all code etc. along with flow control overview and 
 // module graphics.  
 //
-// Designed for use on Jeroen Gerrisen's B&O McKenzie Div layout.
+// Designed for use on Jeroen Gerritsen's B&O McKenzie Div layout.
 // A main control panel uses an ESP32 to set up active staging yard
 // tracks with a second ESP32 and H-bridge chips to drive the Tortoise
 // switch machines, control track power, etc. The project requires remote 
@@ -68,14 +68,39 @@
 #define revSensInpin   12 
 #define revSensOutpin  14
 
+//------------------Wheeling Track Map---------------------------------
+#define	THROWN_T0	  0x0001	//0000000000001	1
+#define	THROWN_T1	  0x0002	//0000000000010	2
+#define	THROWN_T2	  0x0004	//0000000000100	4
+#define	THROWN_T3	  0x0008	//0000000001000	8
+#define	THROWN_T4	  0x0010	//0000000010000	16
+#define	THROWN_T5	  0x0020	//0000000100000	32
+#define	THROWN_T6	  0x0040	//0000001000000	64
+#define	THROWN_T7	  0x0080	//0000010000000	128
+#define	THROWN_T8	  0x0100	//0000100000000	256
+#define	THROWN_T9	  0x0200	//0001000000000	512
+#define	THROWN_T10	0x0400	//0010000000000	1024
+#define	THROWN_T11	0x0800	//0100000000000	2048
+#define	THROWN_T12	0x1000	//1000000000000	4096
+
+const int W1 = THROWN_T1+THROWN_T2+THROWN_T3+THROWN_T4;
+const int W2 = THROWN_T0+THROWN_T2+THROWN_T3+THROWN_T4;
+const int W3 = THROWN_T0+THROWN_T1+THROWN_T3+THROWN_T4;
+const int W4 = THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T4;
+const int W5 = THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3;
+ 
+
+
+
 #define INBOUND   1    
 #define OUTBOUND  2
 #define CLEAR     0
 #define ON        0
 #define OFF       1
 
-#define LED_PIN            2  //debug
 #define trackPowerLED_PIN  4  //debug
+
+#define tortiOne   2   //test torti
 
 //---Instantiate a bcsjTimer.h object for screen sleep
 bcsjTimer  timerOLED;
@@ -101,15 +126,15 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 //--RotaryEncoder DEFINEs for numbers of tracks to access with encoder
 #define ROTARYSTEPS 1
-#define ROTARYMIN   7
-#define ROTARYMAX  12
+#define ROTARYMIN   1
+#define ROTARYMAX   6
 
 //--- Setup a RotaryEncoder for pins A2 and A3:
 RotaryEncoder encoder(16, 17);
 byte lastPos = -1;                   //--- Last known rotary position.
 //const int rotarySwitch   = 13;       //---Setup Rotary Encoder switch on 
                                      //   pin 13 - active low ----------- 
-OneButton button1(13, true);    // Setup a new OneButton on pin 13
+OneButton encoderSw1(13, true);    // Setup a new OneButton on pin 13
 
 //--OneButton Functions for RotaryEncoder switch
 void click1();
@@ -206,17 +231,18 @@ void setup()
   //DEBUG Section - these are manual switches until functions are ready
   //pinMode(bailOutSW, INPUT_PULLUP);
   pinMode(trackPowerLED_PIN, OUTPUT);
+
+  pinMode(tortiOne, OUTPUT);
+  
   //----END DEBUG---------------
 
   encoder.setPosition(ROTARYMIN / ROTARYSTEPS); // start with the value of ROTARYMIN
 
-  button1.attachClick(click1);
-  button1.attachDoubleClick(doubleclick1);
-  button1.attachLongPressStart(longPressStart1); 
+  encoderSw1.attachClick(click1);
+  encoderSw1.attachDoubleClick(doubleclick1);
+  encoderSw1.attachLongPressStart(longPressStart1); 
 
-  //pinMode(rotarySwitch, INPUT_PULLUP);  //replaced by button1
   
-
   digitalWrite(trackPowerLED_PIN, HIGH);
   display.clearDisplay();
   bandoText("B&O RAIL",25,0,2,false);
@@ -340,8 +366,9 @@ void runHOUSEKEEP()
   display.clearDisplay();
   bandoText("SELECT NOW",0,0,2,false);
   bandoText("TRACK",0,20,2,false);
-  if(tracknumLast == ROTARYMAX) bandoText("RevL",70,20,2,false);
-  else bandoText(buf,80,20,2,false);
+   bandoText("W",70,20,2,false);
+  if(tracknumChoice == ROTARYMAX) bandoText("Rev",88,20,2,false);
+  else bandoText(buf,82,20,2,false);
   bandoText("PUSH BUTTON TO SELECT",0,46,1,false);
   bandoText("TRACK POWER  -HK-",0,56,1,true);
 
@@ -364,7 +391,7 @@ void runSTAND_BY()
     }
     
     readEncoder();
-    button1.tick();
+    encoderSw1.tick();
             
     readAllSens();
     if((mainSens_Report > 0) || (revSens_Report > 0))
@@ -398,6 +425,8 @@ void runTRACK_SETUP()
   Serial.println("-----------------------------------------TRACK_SETUP---");
   tracknumLast = tracknumActive;
 
+  
+
   display.clearDisplay();
   enum {BufSize=3};  
   char buf[BufSize];
@@ -405,8 +434,9 @@ void runTRACK_SETUP()
   display.clearDisplay();
   bandoText("ALIGNING",0,0,2,false);
   bandoText("TRACK",0,20,2,false);
-  if(tracknumActive == ROTARYMAX) bandoText("RevL",70,20,2,false);
-  else bandoText(buf,80,20,2,false);
+  bandoText("W",70,20,2,false);
+  if(tracknumChoice == ROTARYMAX) bandoText("Rev",88,20,2,false);
+  else bandoText(buf,82,20,2,false);
   bandoText("HAVE A NICE DAY",0,46,1,false);
   bandoText("TRACK POWER  -OFF-",0,56,1,true);
     
@@ -566,8 +596,9 @@ void readEncoder()
     display.clearDisplay();
     bandoText("SELECT NOW",0,0,2,false);
     bandoText("TRACK",0,20,2,false);
-    if(tracknumChoice == ROTARYMAX) bandoText("RevL",70,20,2,false);
-    else bandoText(buf,80,20,2,false);
+    bandoText("W",70,20,2,false);
+    if(tracknumChoice == ROTARYMAX) bandoText("Rev",88,20,2,false);
+    else bandoText(buf,82,20,2,false);
     bandoText("PUSH BUTTON TO SELECT",0,46,1,false);
     bandoText("TRACK POWER  -OFF-",0,56,1,true);
     
