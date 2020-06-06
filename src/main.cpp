@@ -83,14 +83,30 @@
 #define	THROWN_T11	0x0800	//0100000000000	2048
 #define	THROWN_T12	0x1000	//1000000000000	4096
 
+
+//----------------------Wheeling Staging Yard-------------------------
+//  All turnouts are RH: the "normal" position selects active track.  
+//  RevLoop power does not cycle off when RevLoop route selected.        
+//         ______W1
+//        /      ______W2
+//       /      /      ______W3
+//      /      /      /      ______W4
+//     /      /      /      /      ______W5
+//    /      /      /      /      /      
+//___T0_____T1_____T2_____T3_____T4___________RevLoop
+
+
 const int W1 = THROWN_T1+THROWN_T2+THROWN_T3+THROWN_T4;
 const int W2 = THROWN_T0+THROWN_T2+THROWN_T3+THROWN_T4;
 const int W3 = THROWN_T0+THROWN_T1+THROWN_T3+THROWN_T4;
 const int W4 = THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T4;
 const int W5 = THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3;
- 
+const int W6 = THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3+THROWN_T4;
 
-
+//-----Setup pins for 74HC595 shift register 
+const int latchPin = 33;   
+const int clockPin = 32;   
+const int dataPin  = 25;   
 
 #define INBOUND   1    
 #define OUTBOUND  2
@@ -100,7 +116,7 @@ const int W5 = THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3;
 
 #define trackPowerLED_PIN  4  //debug
 
-#define tortiOne   2   //test torti
+//#define tortiOne   2   //test torti
 
 //---Instantiate a bcsjTimer.h object for screen sleep
 bcsjTimer  timerOLED;
@@ -109,7 +125,7 @@ bcsjTimer  timerTrainIO;
 
 //---Timer Variables---
 unsigned long interval_OLED    = 1000000L * 60 * 0.5;
-unsigned long tortoiseInterval = 1000000L * 6;
+unsigned long tortoiseInterval = 1000000L * 3;
 unsigned long intervalTrainIO  = 1000000L * 60 * .25;
 
 // Instantiate a Bounce object
@@ -232,15 +248,18 @@ void setup()
   //pinMode(bailOutSW, INPUT_PULLUP);
   pinMode(trackPowerLED_PIN, OUTPUT);
 
-  pinMode(tortiOne, OUTPUT);
-  
   //----END DEBUG---------------
 
   encoder.setPosition(ROTARYMIN / ROTARYSTEPS); // start with the value of ROTARYMIN
 
   encoderSw1.attachClick(click1);
   encoderSw1.attachDoubleClick(doubleclick1);
-  encoderSw1.attachLongPressStart(longPressStart1); 
+  encoderSw1.attachLongPressStart(longPressStart1);
+
+  //---Shift register pins
+  pinMode(latchPin, OUTPUT);
+  pinMode(dataPin, OUTPUT);  
+  pinMode(clockPin, OUTPUT); 
 
   
   digitalWrite(trackPowerLED_PIN, HIGH);
@@ -364,7 +383,7 @@ void runHOUSEKEEP()
   char buf[BufSize];
   snprintf (buf, BufSize, "%2d", tracknumLast);
   display.clearDisplay();
-  bandoText("SELECT NOW",0,0,2,false);
+  bandoText("SELECT TRK",0,0,2,false);
   bandoText("TRACK",0,20,2,false);
    bandoText("W",70,20,2,false);
   if(tracknumChoice == ROTARYMAX) bandoText("Rev",88,20,2,false);
@@ -424,7 +443,19 @@ void runTRACK_SETUP()
 
   Serial.println("-----------------------------------------TRACK_SETUP---");
   tracknumLast = tracknumActive;
+  byte route = W6;
 
+  if      (tracknumActive == 1) route = W1;
+  else if (tracknumActive == 2) route = W2;
+  else if (tracknumActive == 3) route = W3;
+  else if (tracknumActive == 4) route = W4;
+  else if (tracknumActive == 5) route = W5;
+  else if (tracknumActive == 6) route = W6;
+    
+    //---Write the route to the shift register
+  digitalWrite(latchPin, LOW);
+  shiftOut(dataPin, clockPin, LSBFIRST, route);
+  digitalWrite(latchPin, HIGH);
   
 
   display.clearDisplay();
@@ -478,7 +509,7 @@ void runTRACK_ACTIVE()
   readAllSens();
     display.clearDisplay();
     bandoText("PROCEED ",20,0,2,false);
-    bandoText("TIMER ON",0,20,2,false);
+    bandoText("POWER ON",0,20,2,false);
     bandoText("TRACK POWER  -ON-",0,56,1,true);
 
   Serial.println("-----------------------------------------TRACK_ACTIVE---");
@@ -594,7 +625,7 @@ void readEncoder()
     char buf[BufSize];
     snprintf (buf, BufSize, "%2d", tracknumChoice);
     display.clearDisplay();
-    bandoText("SELECT NOW",0,0,2,false);
+    bandoText("SELECT TRK",0,0,2,false);
     bandoText("TRACK",0,20,2,false);
     bandoText("W",70,20,2,false);
     if(tracknumChoice == ROTARYMAX) bandoText("Rev",88,20,2,false);
@@ -780,7 +811,7 @@ void click1() {                     //--wake display on single click
   char buf[BufSize];
   snprintf (buf, BufSize, "%2d", tracknumChoice);
   display.clearDisplay();
-  bandoText("SELECT NOW",0,0,2,false);
+  bandoText("SELECT TRK",0,0,2,false);
   bandoText("TRACK",0,20,2,false);
   if(tracknumChoice == ROTARYMAX) bandoText("RevL",70,20,2,false);
   else bandoText(buf,80,20,2,false);
