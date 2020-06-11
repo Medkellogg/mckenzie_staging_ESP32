@@ -75,7 +75,6 @@
 
 //---Turnout bit masks are encoded for shift register input. T0 is
 //   always lsb for shift register 
-
 #define	THROWN_T0	  0x0001	//0000000000001	1
 #define	THROWN_T1	  0x0002	//0000000000010	2
 #define	THROWN_T2	  0x0004	//0000000000100	4
@@ -102,13 +101,13 @@
 //    /      /      /      /      /      
 //___T0_____T1_____T2_____T3_____T4___________RevLoop
 
-
 const int W1 = THROWN_T1+THROWN_T2+THROWN_T3+THROWN_T4;
 const int W2 = THROWN_T0+THROWN_T2+THROWN_T3+THROWN_T4;
 const int W3 = THROWN_T0+THROWN_T1+THROWN_T3+THROWN_T4;
 const int W4 = THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T4;
 const int W5 = THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3;
 const int W6 = THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3+THROWN_T4;
+
 
 //-----Setup pins for 74HC595 shift register 
 const int latchPin = 33;   
@@ -123,41 +122,48 @@ const int dataPin  = 25;
 
 #define trackPowerLED_PIN  4  //debug
 
+
 //---Instantiate a bcsjTimer.h object for screen sleep
 bcsjTimer  timerOLED;
 bcsjTimer  timerTortoise;
 bcsjTimer  timerTrainIO;
+
 
 //---Timer Variables---
 unsigned long interval_OLED    = 1000000L * 60 * 0.5;
 unsigned long tortoiseInterval = 1000000L * 3;
 unsigned long intervalTrainIO  = 1000000L * 60 * .4;
 
+
 // Instantiate a Bounce object
 Bounce debouncer1 = Bounce(); Bounce debouncer2 = Bounce(); 
 Bounce debouncer3 = Bounce(); Bounce debouncer4 = Bounce();
+
 
 //------------Set up OLED Screen-----
 #define SCREEN_WIDTH 128 
 #define SCREEN_HEIGHT 64 
 
+
 //-------Declaration for an SSD1306 display - using I2C (SDA, SCL pins)
 #define OLED_RESET -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-//---OLED on-off functions
-void oledOn();
-void oledOff();
-byte oledState = true;
 
 //---------------------OLED Display Functions------------------//
+byte oledState = true;
+void oledOn();
+void oledOff();
 void bandoText(String text, int x, int y, int size, boolean d);
+void tracknumChoiceText();
+void tracknumActiveText();
 
 
-//--RotaryEncoder DEFINEs for numbers of tracks to access with encoder
+//---RotaryEncoder DEFINEs for numbers of tracks to access with encoder
 #define ROTARYSTEPS 1
 #define ROTARYMIN   1
 #define ROTARYMAX   6
+
 
 //--- Setup a RotaryEncoder for GPIO pins 16, 17:
 RotaryEncoder encoder(16, 17);
@@ -165,13 +171,14 @@ byte          lastPos = -1;              //-- Last known rotary position.
 OneButton     encoderSw1(13, true);      //---Setup  OneButton for rotary 
                                          //   encoder sw on pin 13 - active low
 
-//------RotaryEncoder Setup and variables are in this section---------
+
+//---RotaryEncoder Setup and variables are in this section---------
 byte tracknumChoice  = ROTARYMAX;
 byte tracknumActive  = ROTARYMAX;
 byte tracknumDisplay = ROTARYMAX;
 
 
-//Rotary Encoder Switch Variables
+//---Rotary Encoder Switch Variables-------------------------------
 byte knobPosition = ROTARYMAX;
 bool knobToggle   = true;       //active low 
 void readEncoder();             //--RotaryEncoder Function------------------
@@ -231,9 +238,7 @@ void setup()
 {
   Serial.begin(115200);
   delay(1000);  //time to bring up serial monitor
-  //tracknumLast = ROTARYMAX;
-  
-  
+    
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
       Serial.println(F("SSD1306 allocation failed"));
       for (;;); // Don't proceed, loop forever
@@ -298,48 +303,24 @@ void loop()
   else if (mode == MENU)         {runMENU();}
   
   //----debug terminal print----------------
-      
-      //Serial.print("mainOutValue: ");
-      //Serial.print(mainOutValue);
-      //Serial.print("        revOutValue: ");
-      //Serial.println(revOutValue);
-      //Serial.print("mainSens_Report: ");
-      //Serial.print(mainSens_Report);
-      //Serial.print("     revSens_Report: ");
-      //Serial.println(revSens_Report);
       Serial.print("mainSensTotal:      ");
       Serial.print(mainSensTotal);
       Serial.print("           revSensTotal:  ");
       Serial.println(revSensTotal);
-      //Serial.print("mainPassByTotal: ");
-      //Serial.print(mainPassByTotal);
-      /////Serial.print("     revPassByTotal: ");
-      /////Serial.println(revPassByTotal); 
       Serial.print("mainPassByState:    ");
       Serial.print(mainPassByState);
       Serial.print("          revPassByState: ");
       Serial.println(revPassByState); 
-      //Serial.print("entryExitBusy: ");
-      //Serial.println(entry_ExitBusy); 
-      //Serial.print("mainDirection: ");
-      //Serial.print(mainDirection);  
-      //Serial.print("   revDirection: ");
-      //Serial.println(revDirection);  
       Serial.print("main_LastDirection: ");
       Serial.print(main_LastDirection);
       Serial.print("       rev_lastDirection: ");
       Serial.println(rev_LastDirection);
       Serial.print("tracknumActive:    ");
       Serial.print(tracknumActive);
-      /*
-      Serial.println();
-      Serial.println("=======Report Starts Here!=======");
-      delay(307);
       //---end debug printing   
-      */
+}
+//----END void loop
 
-}  
-//---END void loop
  
 // -------------------State Machine Functions---------------------//
 //                          BEGIN HERE                            //
@@ -359,22 +340,14 @@ void runHOUSEKEEP()
   if(tracknumActive < ROTARYMAX) railPower = OFF;
   if(railPower == ON)  digitalWrite(trackPowerLED_PIN, HIGH);
   else  digitalWrite(trackPowerLED_PIN, LOW);
-  
-  //tracknumChoice = tracknumActive;
-
-  enum {BufSize=3};  
-  char choiceBuf[BufSize];
-  char activeBuf[BufSize];
-  snprintf (choiceBuf, BufSize, "%2d", tracknumChoice);
-  snprintf (activeBuf, BufSize, "%2d", tracknumActive);
+    
   display.clearDisplay();
   bandoText("SELECT TRK",0,0,2,false);
   bandoText("TRACK",0,20,2,false);
-    if(tracknumChoice == ROTARYMAX) bandoText("RevL",78,20,2,false);
-    else bandoText(choiceBuf,82,20,2,false);
+  tracknumChoiceText();
   bandoText("ACTIVE TRACK:",0,55,1,false);
-    if(tracknumActive == ROTARYMAX) bandoText("RevL",78,50,2,true);
-    else bandoText(activeBuf,75,50,2,true);
+  tracknumActiveText();
+    
 
   timerOLED.start(interval_OLED);   /*--start sleep timer here for when HOUSEKEEP 
                                       state is entered after moving through states
@@ -430,7 +403,6 @@ void runTRACK_SETUP()
   Serial.println("-----------------------------------------TRACK_SETUP---");
   
   byte route = W6;
-
   if      (tracknumActive == 1) route = W1;
   else if (tracknumActive == 2) route = W2;
   else if (tracknumActive == 3) route = W3;
@@ -444,14 +416,9 @@ void runTRACK_SETUP()
   digitalWrite(latchPin, HIGH);
   
   display.clearDisplay();
-  enum {BufSize=3};  
-  char buf[BufSize];
-  snprintf (buf, BufSize, "%2d", tracknumActive);
-  display.clearDisplay();
   bandoText("ALIGNING",0,0,2,false);
   bandoText("TRACK",0,20,2,false);
-    if(tracknumChoice == ROTARYMAX) bandoText("RevL",78,20,2,false);
-    else bandoText(buf,82,20,2,false);
+  tracknumChoiceText();  
   bandoText("WAIT!",0,50,2,true);
     
   
@@ -492,16 +459,11 @@ void leaveTrack_Setup()
 void runTRACK_ACTIVE()
 {
   readAllSens();
-  enum {BufSize=3};  
-  char choiceBuf[BufSize];
-  char activeBuf[BufSize];
-  snprintf (choiceBuf, BufSize, "%2d", tracknumChoice);
-  snprintf (activeBuf, BufSize, "%2d", tracknumActive);
+  
   display.clearDisplay();
   bandoText("PROCEED ON ",0,0,2,false);
   bandoText("TRACK",0,20,2,false);
-      if(tracknumChoice == ROTARYMAX) bandoText("RevL",70,20,2,false);
-      else bandoText(choiceBuf,70,20,2,false);
+  tracknumChoiceText();    
   bandoText("POWER ON",0,50,2,true);
 
   Serial.println("-----------------------------------------TRACK_ACTIVE---");
@@ -532,7 +494,6 @@ void runTRACK_ACTIVE()
     {
       break;
     }
-
   }
   
   while(timerTrainIO.running() == true);
@@ -542,6 +503,7 @@ void runTRACK_ACTIVE()
   leaveTrack_Active();
 }  //--end runTrack_Active---
 
+//---------------------leaveTrack_Active Function--------------------
 
 void leaveTrack_Active()
 {
@@ -613,19 +575,13 @@ void readEncoder()
 
     timerOLED.start(interval_OLED);   //--sleep timer for STAND_BY mode
         
-    enum {BufSize=3};  
-    char choiceBuf[BufSize];
-    char activeBuf[BufSize];
-    snprintf (choiceBuf, BufSize, "%2d", tracknumChoice);
-    snprintf (activeBuf, BufSize, "%2d", tracknumActive);
+    
     display.clearDisplay();
     bandoText("SELECT TRK",0,0,2,false);
     bandoText("TRACK",0,20,2,false);
-      if(tracknumChoice == ROTARYMAX) bandoText("RevL",70,20,2,false);
-      else bandoText(choiceBuf,70,20,2,false);
+    tracknumChoiceText();  
     bandoText("ACTIVE TRACK:",0,55,1,false);
-      if(tracknumActive == ROTARYMAX) bandoText("RevL",78,50,2,true);
-      else bandoText(activeBuf,75,50,2,true);
+    tracknumActiveText();  
   }
 } 
 
@@ -797,6 +753,25 @@ void bandoText(String text, int x, int y, int size, boolean d){
     display.display();
   }
 }  
+
+void tracknumChoiceText()
+{
+  enum {BufSize=3};  
+  char choiceBuf[BufSize];
+  snprintf (choiceBuf, BufSize, "%2d", tracknumChoice);
+    if(tracknumChoice == ROTARYMAX) bandoText("RevL",78,20,2,false);
+    else bandoText(choiceBuf,82,20,2,false);
+}
+
+void tracknumActiveText()
+{
+  enum {BufSize=3};  
+  char activeBuf[BufSize];
+  snprintf (activeBuf, BufSize, "%2d", tracknumActive);
+    if(tracknumActive == ROTARYMAX) bandoText("RevL",78,50,2,true);
+    else bandoText(activeBuf,75,50,2,true);
+}
+
 
 void oledOn()
  {
