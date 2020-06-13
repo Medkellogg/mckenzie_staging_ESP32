@@ -8,11 +8,14 @@
 // module graphics.  
 //
 // Designed for use on Jeroen Gerritsen's B&O McKenzie Div layout.
-// A main control panel uses an ESP32 to set up active staging yard
-// tracks with a second ESP32 and H-bridge chips to drive the Tortoise
-// switch machines, control track power, etc. The project requires remote 
-// control panels, so the second ESP32 is used to eliminate long multiple
-// cable runs to the control panels.
+// User controled remote panels are located on the fascia, connected 
+// to an ESP32 and H-bridge chips to drive the Tortoise switch machines, 
+// control track power, etc.  They are connected with a flat 8C modular 
+// cable and RJ45 jacks.  A rotary encoder on the control panel is direct
+// connected to the ESP32 and the OLED uses I2C, both via the modular cable.
+//
+// Uses +12VDC for driving the Tortoises; +5VC for the ESP32 VCC.  The ESP32
+// uses a 3.3VDC logic level.  The sensors and the OLED are supplied with 3.3V.
 // 
 // Functions
 //   *Rotary encoder with switch and OLED screen are the controls on the panel
@@ -156,7 +159,8 @@ void oledOn();
 void oledOff();
 void bandoText(String text, int x, int y, int size, boolean d);
 void tracknumChoiceText();
-void tracknumActiveText();
+void tracknumActiveText();  //TODO______may not need----review----
+void tracknumActChoText();
 
 
 //---RotaryEncoder DEFINEs for numbers of tracks to access with encoder
@@ -171,12 +175,10 @@ byte          lastPos = -1;              //-- Last known rotary position.
 OneButton     encoderSw1(13, true);      //---Setup  OneButton for rotary 
                                          //   encoder sw on pin 13 - active low
 
-
 //---RotaryEncoder Setup and variables are in this section---------
 byte tracknumChoice  = ROTARYMAX;
 byte tracknumActive  = ROTARYMAX;
 byte tracknumDisplay = ROTARYMAX;
-
 
 //---Rotary Encoder Switch Variables-------------------------------
 byte knobPosition = ROTARYMAX;
@@ -189,7 +191,6 @@ void doubleclick1();
 void longPressStart1();
 
 bool bailOut = true;  //active low, set active by doubleclick to end timer 
-
 
 //---------------SETUP STATE Machine and State Functions----------------------
 enum {HOUSEKEEP, STAND_BY, TRACK_SETUP, TRACK_ACTIVE, OCCUPIED, MENU} mode;
@@ -212,7 +213,6 @@ void readAllSens();
 
 //---State Machine Variables
 byte railPower = OFF;
-
 
 //---Sensor variables
 byte mainSensTotal      = 0,      mainSens_Report    = 0; 
@@ -238,8 +238,9 @@ void setup()
 {
   Serial.begin(115200);
   delay(1000);  //time to bring up serial monitor
+  Wire.setClock(1000000L);
     
-  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x64
       Serial.println(F("SSD1306 allocation failed"));
       for (;;); // Don't proceed, loop forever
     }
@@ -302,7 +303,7 @@ void loop()
 
   else if (mode == MENU)         {runMENU();}
   
-  //----debug terminal print----------------
+  /*----debug terminal print----------------
       Serial.print("mainSensTotal:      ");
       Serial.print(mainSensTotal);
       Serial.print("           revSensTotal:  ");
@@ -317,7 +318,7 @@ void loop()
       Serial.println(rev_LastDirection);
       Serial.print("tracknumActive:    ");
       Serial.print(tracknumActive);
-      //---end debug printing   
+      //---end debug printing  */ 
 }
 //----END void loop
 
@@ -342,11 +343,11 @@ void runHOUSEKEEP()
   else  digitalWrite(trackPowerLED_PIN, LOW);
     
   display.clearDisplay();
+  tracknumActChoText();
   bandoText("SELECT TRK",0,0,2,false);
   bandoText("TRACK",0,20,2,false);
-  tracknumChoiceText();
-  bandoText("ACTIVE TRACK:",0,55,1,false);
-  tracknumActiveText();
+  bandoText("ACTIVE TRACK:",0,55,1,true);
+  
     
 
   timerOLED.start(interval_OLED);   /*--start sleep timer here for when HOUSEKEEP 
@@ -563,32 +564,28 @@ void readEncoder()
     tracknumChoice = newPos;
     oledOn();
     
-    Serial.print(newPos);   
-    Serial.println();
-    Serial.print("Choice: ");
-    Serial.println(tracknumChoice);
-    Serial.print("Active: ");
-    Serial.println(tracknumActive);
-    Serial.print("bailOut:   ");
-    Serial.println(bailOut);
-    delay(50);
+            /*Serial.print(newPos);   
+            Serial.println();
+            Serial.print("Choice: ");
+            Serial.println(tracknumChoice);
+            Serial.print("Active: ");
+            Serial.println(tracknumActive);
+            Serial.print("bailOut:   ");
+            Serial.println(bailOut);  
+            //delay(50); */
 
     timerOLED.start(interval_OLED);   //--sleep timer for STAND_BY mode
-        
-    
     display.clearDisplay();
-    bandoText("SELECT TRK",0,0,2,false);
-    bandoText("TRACK",0,20,2,false);
-    tracknumChoiceText();  
+    tracknumActChoText();
     bandoText("ACTIVE TRACK:",0,55,1,false);
-    tracknumActiveText();  
+    bandoText("SELECT TRK",0,0,2,false);
+    bandoText("TRACK",0,20,2,true);
   }
 } 
 
 void runMENU()
 {  
   oledOn();
-  
   display.clearDisplay();
   bandoText("SETUP MENU",0,0,2,false);
   bandoText("DEMO ONLY",0,20,2,false);
@@ -763,15 +760,27 @@ void tracknumChoiceText()
     else bandoText(choiceBuf,82,20,2,false);
 }
 
-void tracknumActiveText()
+void tracknumActiveText()    //TODO________may not need--review-----
 {
   enum {BufSize=3};  
   char activeBuf[BufSize];
   snprintf (activeBuf, BufSize, "%2d", tracknumActive);
-    if(tracknumActive == ROTARYMAX) bandoText("RevL",78,50,2,true);
-    else bandoText(activeBuf,75,50,2,true);
+    if(tracknumActive == ROTARYMAX) bandoText("RevL",78,50,2,false);
+    else bandoText(activeBuf,75,50,2,false);
 }
 
+void tracknumActChoText()
+{
+  enum {BufSize=3};  
+  char activeBuf[BufSize];
+  char choiceBuf[BufSize];
+  snprintf (choiceBuf, BufSize, "%2d", tracknumChoice);
+    if(tracknumChoice == ROTARYMAX) bandoText("RevL",78,20,2,false);
+    else bandoText(choiceBuf,82,20,2,false);
+  snprintf (activeBuf, BufSize, "%2d", tracknumActive);
+    if(tracknumActive == ROTARYMAX) bandoText("RevL",78,50,2,false);
+    else bandoText(activeBuf,75,50,2,false);
+}  
 
 void oledOn()
  {
