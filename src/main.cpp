@@ -1,5 +1,5 @@
 //
-//Jeroen Garritsen's B&O McKenzie Division - Staging Yard Project
+//Jeroen Gerritsen's B&O McKenzie Division - Staging Yard Project
 //by: Mark Kellogg - Began: 4/23/2020
 //
 //---------------------------Github Repository------------------------------
@@ -11,7 +11,7 @@
 // User controled remote panels are located on the fascia, connected 
 // to an ESP32 and H-bridge chips to drive the Tortoise switch machines, 
 // control track power, etc.  They are connected with a flat 8C modular 
-// cable and RJ45 jacks.  A rotary encoder on the control panel is direct
+// cable and RJ45 jacks.  A rotary encoder on the control panel is directly
 // connected to the ESP32 and the OLED uses I2C, both via the modular cable.
 //
 // Uses +12VDC for driving the Tortoises; +5VC for the ESP32 VCC.  The ESP32
@@ -20,13 +20,16 @@
 // Functions
 //   *Rotary encoder with switch and OLED screen are the controls on the panel
 //   *Sequence:
-//      Turn encoder to wake up screen and display the chosen track
-//      Single click knob to select track: track power off and route aligns 
+//      Single click or turn encoder to wake up screen. 
+//      Select track choice with knob
+//      Single click knob to align track: track power off and route aligns 
 //      Alingnment completes: Track power on, 4 minute timer on
-//      After 4 minutes or outbound train clears throat: track power off 
-//      Ready for next selection
-//      Double-click on knob will stop timer and go back to Select Track mode
-//      Three second hold on knob will force setup mode
+//      After 4 minutes or outbound train clears throat: track power off
+//      Double-click to stop timer and return to standby
+//      If more time is needed: the current track is displayed on the OLED, 
+//        user may single-click to select again for another 4 minutes 
+//      After the timer expires the system will return to the standby screen
+//      Setup Mode can be entered by holding the click knob for seconds
 
 
 //----------------------------Track Sensors Descriptions--------------------
@@ -69,12 +72,37 @@
 #include <Adafruit_SSD1306.h>
 #include "bcsjTimer.h"
 #include <OneButton.h>
+#include <EEPROM.h>
+
+
+
+
+
+//byte crntMap{2};    //---Parkersburg
+//byte crntMap{3};    //---Philadelphia
+//byte crntMap{4};    //---Cumberland
+
+
+
 
 //------------Setup sensor debounce from Bounce2 library-----
 #define mainSensInpin  26
 #define mainSensOutpin 27
 #define revSensInpin   12 
 #define revSensOutpin  14
+
+#define INBOUND   1    
+#define OUTBOUND  2
+#define CLEAR     0
+#define ON        0
+#define OFF       1
+
+#define trackPowerLED_PIN  4  //debug
+
+
+
+#define MAX_LADDER_TRACKS 13
+#define MAX_TURNOUTS      13
 
 //---Turnout bit masks are encoded for shift register input. T0 is
 //   always lsb for shift register 
@@ -92,6 +120,15 @@
 #define	THROWN_T11	0x0800	//0100000000000	2048
 #define	THROWN_T12	0x1000	//1000000000000	4096
 
+struct turnoutMap_t {
+  uint8_t       numTracks;
+  uint8_t       numTurnouts;
+  byte          defaultTrack;
+  bool          revL;
+  unsigned long trainIOtime;
+  char          mapName[16];
+  uint16_t      routes[MAX_LADDER_TRACKS];
+};
 
 //----------------------Wheeling Staging Yard-------------------------
 //  All turnouts are RH: the "normal" position selects active track.  
@@ -104,26 +141,39 @@
 //    /      /      /      /      /      
 //___T0_____T1_____T2_____T3_____T4___________RevLoop
 
-const int W1 = THROWN_T1+THROWN_T2+THROWN_T3+THROWN_T4;
-const int W2 = THROWN_T0+THROWN_T2+THROWN_T3+THROWN_T4;
-const int W3 = THROWN_T0+THROWN_T1+THROWN_T3+THROWN_T4;
-const int W4 = THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T4;
-const int W5 = THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3;
-const int W6 = THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3+THROWN_T4;
+const turnoutMap_t Wheeling = {
+             6,                 // track count
+             5,                 // turnout count
+             6,                 // default track
+             true,              // have reverse track?
+             1000000L * 60 * 1, // delay time in TRACK_ACTIVE
+             "Wheeling",
+/* trk W0   */  0,
+/* trk W1   */  THROWN_T1+THROWN_T2+THROWN_T3+THROWN_T4,
+/* trk W2   */  THROWN_T0+THROWN_T2+THROWN_T3+THROWN_T4,
+/* trk W3   */  THROWN_T0+THROWN_T1+THROWN_T3+THROWN_T4,
+/* trk W4   */  THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T4,
+/* trk W5   */  THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3,
+/* trk RevL */  THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3+THROWN_T4,
+/* trk A7   */  0, /* not used */
+/* trk W8   */  0, /* not used */ 
+/* trk W9   */  0, /* not used */
+/* trk W10  */  0, /* not used */
+/* trk W11  */  0, /* not used */ 
+/* trk W12  */  0  /* not used */
+};
+
+
 
 
 //-----Setup pins for 74HC595 shift register 
 const int latchPin = 33;   
 const int clockPin = 32;   
-const int dataPin  = 25;   
+const int dataPin  = 25; 
 
-#define INBOUND   1    
-#define OUTBOUND  2
-#define CLEAR     0
-#define ON        0
-#define OFF       1
+//-----declare latch function----
+void writeTrackBits( uint16_t track);
 
-#define trackPowerLED_PIN  4  //debug
 
 
 //---Instantiate a bcsjTimer.h object for screen sleep
@@ -135,7 +185,7 @@ bcsjTimer  timerTrainIO;
 //---Timer Variables---
 unsigned long interval_OLED    = 1000000L * 60 * 0.5;
 unsigned long tortoiseInterval = 1000000L * 3;
-unsigned long intervalTrainIO  = 1000000L * 60 * .4;
+unsigned long intervalTrainIO  = Wheeling.trainIOtime;
 
 
 // Instantiate a Bounce object
@@ -166,7 +216,7 @@ void tracknumActChoText();
 //---RotaryEncoder DEFINEs for numbers of tracks to access with encoder
 #define ROTARYSTEPS 1
 #define ROTARYMIN   1
-#define ROTARYMAX   6
+#define ROTARYMAX   Wheeling.numTracks
 
 
 //--- Setup a RotaryEncoder for GPIO pins 16, 17:
@@ -267,18 +317,28 @@ void setup()
   pinMode(latchPin, OUTPUT);
   pinMode(dataPin,  OUTPUT);  
   pinMode(clockPin, OUTPUT); 
-
+  
   digitalWrite(trackPowerLED_PIN, HIGH);
-
+  
   display.clearDisplay();
   bandoText("B&O RAIL",25,0,2,false);
-  bandoText("JEROEN GARRITSEN'S",8,20,1,true);
-  bandoText("McKENZIE",0,33,2,true);
-  bandoText("DIVISION",30,50,2,true);
+  bandoText("JEROEN GERRITSEN'S",8,20,1,true);
+  bandoText("McKENZIE",0,33,1,true);
+  bandoText("DIVISION",60,33,1,true);
+  //bandoText(crntMap.mapName,0,50,1,true);
   display.display();
+
+  //tracknumChoice = crntMap.routes[crntMap.defaultTrack];
+
+ // writeTrackBits(crntMap.routes[crntMap.defaultTrack]);  //align to default track
+ 
+  
+
+  
   delay(5000);
   display.clearDisplay();
   digitalWrite(trackPowerLED_PIN, LOW);
+
 }  
 //---End setup
 
@@ -337,7 +397,7 @@ void runHOUSEKEEP()
   
   Serial.println();
   Serial.println("-----------------------------------------HOUSEKEEP---");
-
+  
   if(tracknumActive < ROTARYMAX) railPower = OFF;
   if(railPower == ON)  digitalWrite(trackPowerLED_PIN, HIGH);
   else  digitalWrite(trackPowerLED_PIN, LOW);
@@ -375,8 +435,7 @@ void runSTAND_BY()
     if((mainSens_Report > 0) || (revSens_Report > 0))
     {
       Serial.println("---to OCCUPIED from STAND_BY---");  //debug
-      oledOn();                    //---awaken OLED if it's sleeping
-                                   //   before moving to OCCUPIED---
+      oledOn();                    
       runOCCUPIED();
     }
   }
@@ -386,7 +445,7 @@ void runSTAND_BY()
   tracknumActive = tracknumChoice;  
   knobToggle = true;                 //--reset so readEncoder will run in stand_by
   timerOLED.disable();              
-  oledOn();                          //--awake display if in sleep mode
+  oledOn();
   display.display(); 
   mode = TRACK_SETUP;                //---move on with new track assignment
 } 
@@ -403,26 +462,14 @@ void runTRACK_SETUP()
 
   Serial.println("-----------------------------------------TRACK_SETUP---");
   
-  byte route = W6;
-  if      (tracknumActive == 1) route = W1;
-  else if (tracknumActive == 2) route = W2;
-  else if (tracknumActive == 3) route = W3;
-  else if (tracknumActive == 4) route = W4;
-  else if (tracknumActive == 5) route = W5;
-  else if (tracknumActive == 6) route = W6;
-    
-    //---Write the route to the shift register
-  digitalWrite(latchPin, LOW);
-  shiftOut(dataPin, clockPin, LSBFIRST, route);
-  digitalWrite(latchPin, HIGH);
-  
+  writeTrackBits(Wheeling.routes[tracknumActive]);
+
   display.clearDisplay();
   bandoText("ALIGNING",0,0,2,false);
   bandoText("TRACK",0,20,2,false);
   tracknumChoiceText();  
   bandoText("WAIT!",0,50,2,true);
     
-  
   timerTortoise.start(tortoiseInterval);   //--begin delay for Tortoises
   while(timerTortoise.running() == true)
   {
@@ -479,10 +526,10 @@ void runTRACK_ACTIVE()
      encoderSw1.tick();
      
      //debug
-     Serial.print("main_LastDirection: ");
+     /*Serial.print("main_LastDirection: ");
      Serial.print(rev_LastDirection);
      Serial.println(main_LastDirection);
-     Serial.println("-----Waiting for Train to Exit!");
+     Serial.println("-----Waiting for Train to Exit!");  */
      
     if (bailOut == 0)     //active low: active if doubleclick encoder knob
     {
@@ -564,7 +611,7 @@ void readEncoder()
     tracknumChoice = newPos;
     oledOn();
     
-            /*Serial.print(newPos);   
+            Serial.print(newPos);   
             Serial.println();
             Serial.print("Choice: ");
             Serial.println(tracknumChoice);
@@ -572,7 +619,7 @@ void readEncoder()
             Serial.println(tracknumActive);
             Serial.print("bailOut:   ");
             Serial.println(bailOut);  
-            //delay(50); */
+            //delay(50); 
 
     timerOLED.start(interval_OLED);   //--sleep timer for STAND_BY mode
     display.clearDisplay();
@@ -585,13 +632,15 @@ void readEncoder()
 
 void runMENU()
 {  
+  Serial.println("-----------------------------------------runMENU---");
+
   oledOn();
   display.clearDisplay();
   bandoText("SETUP MENU",0,0,2,false);
-  bandoText("DEMO ONLY",0,20,2,false);
-  bandoText("LATER, DUDE",0,56,1,true);
-
-  mode = HOUSEKEEP;
+  bandoText("Wrt EEPROM",0,20,2,true);
+  delay(3000);
+  
+  runHOUSEKEEP();
 }
 
 //---------------------Updating Sensor Functions------------------
@@ -737,9 +786,9 @@ void readRevSens()
 
   
 
-// ------------------Display Functions Section-------------------//
-//                          BEGINS HERE                          //
-//---------------------------------------------------------------//
+// -----------------------Display Functions---------------------//
+//                          BEGIN HERE                          //
+//--------------------------------------------------------------//
 
 void bandoText(String text, int x, int y, int size, boolean d){
   display.setTextSize(size);
@@ -756,7 +805,7 @@ void tracknumChoiceText()
   enum {BufSize=3};  
   char choiceBuf[BufSize];
   snprintf (choiceBuf, BufSize, "%2d", tracknumChoice);
-    if(tracknumChoice == ROTARYMAX) bandoText("RevL",78,20,2,false);
+    if((tracknumChoice == ROTARYMAX) && (Wheeling.revL  == true) ) bandoText("RevL",78,20,2,false);
     else bandoText(choiceBuf,82,20,2,false);
 }
 
@@ -775,11 +824,11 @@ void tracknumActChoText()
   char activeBuf[BufSize];
   char choiceBuf[BufSize];
   snprintf (choiceBuf, BufSize, "%2d", tracknumChoice);
-    if(tracknumChoice == ROTARYMAX) bandoText("RevL",78,20,2,false);
+    if((tracknumChoice == ROTARYMAX) && (Wheeling.revL  == true) ) bandoText("RevL",78,20,2,false);
     else bandoText(choiceBuf,82,20,2,false);
   snprintf (activeBuf, BufSize, "%2d", tracknumActive);
-    if(tracknumActive == ROTARYMAX) bandoText("RevL",78,50,2,false);
-    else bandoText(activeBuf,75,50,2,false);
+    if((tracknumActive == ROTARYMAX) && (Wheeling.revL  == true)) bandoText("RevL",78,50,2,false);
+    else bandoText(activeBuf,75,50,2,false); 
 }  
 
 void oledOn()
@@ -796,8 +845,9 @@ void oledOff()
 //--display functions end
 
 
-//----------Rotary EncoderSw Click Functions----------- -----------//
-
+//----------------Rotary EncoderSw Click Functions--------------//
+//                          BEGIN HERE                          //
+//--------------------------------------------------------------//
 
 void click1(){                //--singleclick: if sleep awaken OLED
   if(oledState == false){       
@@ -811,11 +861,17 @@ void click1(){                //--singleclick: if sleep awaken OLED
 
 void doubleclick1(){          //--doubleclick: reset trainIO timer to 0
     timerTrainIO.disable();
-  }
+}
 
 void longPressStart1(){       //--hold for 3 seconds goto Main Setup Menu
   runMENU();
 }
 
+//----------------Shift Register Function--------------//
 
-
+void writeTrackBits(uint16_t track)
+{
+  digitalWrite(latchPin, LOW);
+  shiftOut(dataPin, clockPin, LSBFIRST, track);
+  digitalWrite(latchPin, HIGH);
+}  
