@@ -74,15 +74,10 @@
 #include <OneButton.h>
 #include <EEPROM.h>
 
-
-
-
-
-//byte crntMap{2};    //---Parkersburg
-//byte crntMap{3};    //---Philadelphia
-//byte crntMap{4};    //---Cumberland
-
-
+//#define Wheeling crntMap
+#define Parkersburg crntMap
+//#define Philadelphia crntMap
+//#define Cumberland crntMap
 
 
 //------------Setup sensor debounce from Bounce2 library-----
@@ -163,6 +158,107 @@ const turnoutMap_t Wheeling = {
 /* trk W12  */  0  /* not used */
 };
 
+//--------------------Parkersburg Staging Yard------------------            
+//         
+//       P1  P2  P3  P4  P5  P6
+//      /   /   /   /   /   /
+//     /   /   /   /   /   /
+//    /   /   /   /   /   /
+//   /   /   /   /   /   /  
+//  |   /   /   /  T3___/  
+//  T4_/   /  T2__/    
+//  |     T1__/
+//  |    /     
+//  T0__/  
+//  | 
+//  
+const turnoutMap_t Parkersburg = {
+             6,                 // track count
+             5,                 // turnout count
+             1,                 // default track
+             false,             // have reverse track?
+             1000000L * 60 * 1, // delay time in TRACK_ACTIVE
+             "Parkersburg",
+/* trk P0   */  0,
+/* trk P1   */  0,
+/* trk P2   */  THROWN_T4,
+/* trk P3   */  THROWN_T0,
+/* trk P4   */  THROWN_T0+THROWN_T1,
+/* trk P5   */  THROWN_T0+THROWN_T1+THROWN_T2,
+/* trk P6   */  THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3,
+/* trk P7   */  0, /* not used */
+/* trk P8   */  0, /* not used */ 
+/* trk P9   */  0, /* not used */
+/* trk P10  */  0, /* not used */
+/* trk P11  */  0, /* not used */ 
+/* trk P12  */  0  /* not used */
+};
+
+//----------------------Philadelphia Staging Yard-------------------------
+//  All turnouts are RH: the "normal" position selects active track.  
+//  RevLoop power does not cycle off when RevLoop route selected.        
+//         ______W1
+//        /      ______W2
+//       /      /      ______W3
+//      /      /      /      ______W4
+//     /      /      /      /      ______W5
+//    /      /      /      /      /      
+//___T0_____T1_____T2_____T3_____T4___________RevLoop
+
+const turnoutMap_t Philadelphia = {
+             6,                 // track count
+             5,                 // turnout count
+             12,                // default track
+             true,              // have reverse track?
+             1000000L * 60 * 1, // delay time in TRACK_ACTIVE
+             "Philadelphia",
+/* trk W0   */  0,
+/* trk W1   */  THROWN_T1+THROWN_T2+THROWN_T3+THROWN_T4,
+/* trk W2   */  THROWN_T0+THROWN_T2+THROWN_T3+THROWN_T4,
+/* trk W3   */  THROWN_T0+THROWN_T1+THROWN_T3+THROWN_T4,
+/* trk W4   */  THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T4,
+/* trk W5   */  THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3,
+/* trk RevL */  THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3+THROWN_T4,
+/* trk A7   */  0, /* not used */
+/* trk W8   */  0, /* not used */ 
+/* trk W9   */  0, /* not used */
+/* trk W10  */  0, /* not used */
+/* trk W11  */  0, /* not used */ 
+/* trk W12  */  0  /* not used */
+};
+
+//----------------------Cumberland Staging Yard-------------------------
+//  All turnouts are RH: the "normal" position selects active track.  
+//  RevLoop power does not cycle off when RevLoop route selected.        
+//         ______W1
+//        /      ______W2
+//       /      /      ______W3
+//      /      /      /      ______W4
+//     /      /      /      /      ______W5
+//    /      /      /      /      /      
+//___T0_____T1_____T2_____T3_____T4___________RevLoop
+
+const turnoutMap_t Cumberland = {
+             6,                 // track count
+             5,                 // turnout count
+             12,                // default track
+             true,              // have reverse track?
+             1000000L * 60 * 1, // delay time in TRACK_ACTIVE
+             "Cumberland",
+/* trk W0   */  0,
+/* trk W1   */  THROWN_T1+THROWN_T2+THROWN_T3+THROWN_T4,
+/* trk W2   */  THROWN_T0+THROWN_T2+THROWN_T3+THROWN_T4,
+/* trk W3   */  THROWN_T0+THROWN_T1+THROWN_T3+THROWN_T4,
+/* trk W4   */  THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T4,
+/* trk W5   */  THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3,
+/* trk RevL */  THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3+THROWN_T4,
+/* trk A7   */  0, /* not used */
+/* trk W8   */  0, /* not used */ 
+/* trk W9   */  0, /* not used */
+/* trk W10  */  0, /* not used */
+/* trk W11  */  0, /* not used */ 
+/* trk W12  */  0  /* not used */
+};
 
 
 
@@ -185,7 +281,7 @@ bcsjTimer  timerTrainIO;
 //---Timer Variables---
 unsigned long interval_OLED    = 1000000L * 60 * 0.5;
 unsigned long tortoiseInterval = 1000000L * 3;
-unsigned long intervalTrainIO  = Wheeling.trainIOtime;
+unsigned long intervalTrainIO  = crntMap.trainIOtime;
 
 
 // Instantiate a Bounce object
@@ -216,7 +312,7 @@ void tracknumActChoText();
 //---RotaryEncoder DEFINEs for numbers of tracks to access with encoder
 #define ROTARYSTEPS 1
 #define ROTARYMIN   1
-#define ROTARYMAX   Wheeling.numTracks
+#define ROTARYMAX   crntMap.numTracks
 
 
 //--- Setup a RotaryEncoder for GPIO pins 16, 17:
@@ -324,13 +420,13 @@ void setup()
   bandoText("B&O RAIL",25,0,2,false);
   bandoText("JEROEN GERRITSEN'S",8,20,1,true);
   bandoText("McKENZIE",0,33,1,true);
-  bandoText("DIVISION",60,33,1,true);
-  //bandoText(crntMap.mapName,0,50,1,true);
+  //bandoText("DIVISION",60,33,1,true);
+  bandoText(crntMap.mapName,0,50,1,true);
   display.display();
 
-  //tracknumChoice = crntMap.routes[crntMap.defaultTrack];
+  tracknumChoice = crntMap.routes[crntMap.defaultTrack];
 
- // writeTrackBits(crntMap.routes[crntMap.defaultTrack]);  //align to default track
+  writeTrackBits(crntMap.routes[crntMap.defaultTrack]);  //align to default track
  
   
 
@@ -462,7 +558,7 @@ void runTRACK_SETUP()
 
   Serial.println("-----------------------------------------TRACK_SETUP---");
   
-  writeTrackBits(Wheeling.routes[tracknumActive]);
+  writeTrackBits(crntMap.routes[tracknumActive]);
 
   display.clearDisplay();
   bandoText("ALIGNING",0,0,2,false);
@@ -805,7 +901,7 @@ void tracknumChoiceText()
   enum {BufSize=3};  
   char choiceBuf[BufSize];
   snprintf (choiceBuf, BufSize, "%2d", tracknumChoice);
-    if((tracknumChoice == ROTARYMAX) && (Wheeling.revL  == true) ) bandoText("RevL",78,20,2,false);
+    if((tracknumChoice == ROTARYMAX) && (crntMap.revL  == true) ) bandoText("RevL",78,20,2,false);
     else bandoText(choiceBuf,82,20,2,false);
 }
 
@@ -824,10 +920,10 @@ void tracknumActChoText()
   char activeBuf[BufSize];
   char choiceBuf[BufSize];
   snprintf (choiceBuf, BufSize, "%2d", tracknumChoice);
-    if((tracknumChoice == ROTARYMAX) && (Wheeling.revL  == true) ) bandoText("RevL",78,20,2,false);
+    if((tracknumChoice == ROTARYMAX) && (crntMap.revL  == true) ) bandoText("RevL",78,20,2,false);
     else bandoText(choiceBuf,82,20,2,false);
   snprintf (activeBuf, BufSize, "%2d", tracknumActive);
-    if((tracknumActive == ROTARYMAX) && (Wheeling.revL  == true)) bandoText("RevL",78,50,2,false);
+    if((tracknumActive == ROTARYMAX) && (crntMap.revL  == true)) bandoText("RevL",78,50,2,false);
     else bandoText(activeBuf,75,50,2,false); 
 }  
 
