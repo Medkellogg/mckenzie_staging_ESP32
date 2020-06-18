@@ -74,11 +74,10 @@
 #include <OneButton.h>
 #include <EEPROM.h>
 
-//#define Wheeling crntMap
-#define Parkersburg crntMap
+#define Wheeling crntMap
+//#define Parkersburg crntMap
 //#define Philadelphia crntMap
 //#define Cumberland crntMap
-
 
 //------------Setup sensor debounce from Bounce2 library-----
 #define mainSensInpin  26
@@ -93,8 +92,6 @@
 #define OFF       1
 
 #define trackPowerLED_PIN  4  //debug
-
-
 
 #define MAX_LADDER_TRACKS 13
 #define MAX_TURNOUTS      13
@@ -260,8 +257,6 @@ const turnoutMap_t Cumberland = {
 /* trk W12  */  0  /* not used */
 };
 
-
-
 //-----Setup pins for 74HC595 shift register 
 const int latchPin = 33;   
 const int clockPin = 32;   
@@ -270,34 +265,27 @@ const int dataPin  = 25;
 //-----declare latch function----
 void writeTrackBits( uint16_t track);
 
-
-
 //---Instantiate a bcsjTimer.h object for screen sleep
 bcsjTimer  timerOLED;
 bcsjTimer  timerTortoise;
 bcsjTimer  timerTrainIO;
-
 
 //---Timer Variables---
 unsigned long interval_OLED    = 1000000L * 60 * 0.5;
 unsigned long tortoiseInterval = 1000000L * 3;
 unsigned long intervalTrainIO  = crntMap.trainIOtime;
 
-
 // Instantiate a Bounce object
 Bounce debouncer1 = Bounce(); Bounce debouncer2 = Bounce(); 
 Bounce debouncer3 = Bounce(); Bounce debouncer4 = Bounce();
-
 
 //------------Set up OLED Screen-----
 #define SCREEN_WIDTH 128 
 #define SCREEN_HEIGHT 64 
 
-
 //-------Declaration for an SSD1306 display - using I2C (SDA, SCL pins)
 #define OLED_RESET -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-
 
 //---------------------OLED Display Functions------------------//
 byte oledState = true;
@@ -308,12 +296,10 @@ void tracknumChoiceText();
 void tracknumActiveText();  //TODO______may not need----review----
 void tracknumActChoText();
 
-
 //---RotaryEncoder DEFINEs for numbers of tracks to access with encoder
 #define ROTARYSTEPS 1
 #define ROTARYMIN   1
 #define ROTARYMAX   crntMap.numTracks
-
 
 //--- Setup a RotaryEncoder for GPIO pins 16, 17:
 RotaryEncoder encoder(16, 17);
@@ -355,7 +341,6 @@ void readRevSens();
 void rptMainDirection();
 void rptRevDirection();
 void readAllSens();
-//--end sensor functions---
 
 //---State Machine Variables
 byte railPower = OFF;
@@ -372,9 +357,6 @@ byte revPassByState     = false,  revPassByTotal     = 0;
 byte revInValue         = 1,      revIn_LastValue    = 1; 
 byte revOutValue        = 1,      revOut_LastValue   = 1;
 byte revDirection       = 0,      rev_LastDirection  = 0;
-
-//----end of sensor variables
-
 
 //--------------------------------------------------------------//
 //                         void setup()                         //
@@ -404,7 +386,6 @@ void setup()
   pinMode(trackPowerLED_PIN, OUTPUT); // for relay in final version
 
   encoder.setPosition(ROTARYMAX / ROTARYSTEPS); // start with ROTARYMAX value
-
   encoderSw1.attachClick(click1);
   encoderSw1.attachDoubleClick(doubleclick1);
   encoderSw1.attachLongPressStart(longPressStart1);
@@ -420,23 +401,16 @@ void setup()
   bandoText("B&O RAIL",25,0,2,false);
   bandoText("JEROEN GERRITSEN'S",8,20,1,true);
   bandoText("McKENZIE",0,33,1,true);
-  //bandoText("DIVISION",60,33,1,true);
   bandoText(crntMap.mapName,0,50,1,true);
   display.display();
 
   tracknumChoice = crntMap.routes[crntMap.defaultTrack];
-
   writeTrackBits(crntMap.routes[crntMap.defaultTrack]);  //align to default track
- 
-  
-
   
   delay(5000);
   display.clearDisplay();
   digitalWrite(trackPowerLED_PIN, LOW);
-
-}  
-//---End setup
+} //-----------------------End setup-----------------------------
 
 //--------------------------------------------------------------//
 //                          void loop()                         //
@@ -448,51 +422,41 @@ void loop()
   else                 digitalWrite(trackPowerLED_PIN, LOW);
 
   if (mode == HOUSEKEEP)         {runHOUSEKEEP();}
-
-  else if (mode == STAND_BY)     {runSTAND_BY();}
-
-  else if (mode == TRACK_SETUP)  {runTRACK_SETUP();}
-
+  else if (mode ==     STAND_BY) {runSTAND_BY();}
+  else if (mode ==  TRACK_SETUP) {runTRACK_SETUP();}
   else if (mode == TRACK_ACTIVE) {runTRACK_ACTIVE();}
-
-  else if (mode == OCCUPIED)     {runOCCUPIED();}
-
-  else if (mode == MENU)         {runMENU();}
+  else if (mode ==     OCCUPIED) {runOCCUPIED();}
+  else if (mode ==         MENU) {runMENU();}
   
   /*----debug terminal print----------------
-      Serial.print("mainSensTotal:      ");
-      Serial.print(mainSensTotal);
-      Serial.print("           revSensTotal:  ");
-      Serial.println(revSensTotal);
-      Serial.print("mainPassByState:    ");
-      Serial.print(mainPassByState);
-      Serial.print("          revPassByState: ");
-      Serial.println(revPassByState); 
-      Serial.print("main_LastDirection: ");
-      Serial.print(main_LastDirection);
-      Serial.print("       rev_lastDirection: ");
-      Serial.println(rev_LastDirection);
-      Serial.print("tracknumActive:    ");
-      Serial.print(tracknumActive);
-      //---end debug printing  */ 
-}
-//----END void loop
+                          Serial.print("mainSensTotal:      ");
+                          Serial.print(mainSensTotal);
+                          Serial.print("           revSensTotal:  ");
+                          Serial.println(revSensTotal);
+                          Serial.print("mainPassByState:    ");
+                          Serial.print(mainPassByState);
+                          Serial.print("          revPassByState: ");
+                          Serial.println(revPassByState); 
+                          Serial.print("main_LastDirection: ");
+                          Serial.print(main_LastDirection);
+                          Serial.print("       rev_lastDirection: ");
+                          Serial.println(rev_LastDirection);
+                          Serial.print("tracknumActive:    ");
+                          Serial.print(tracknumActive);
+                          //---end debug printing  */ 
+}      //------------------------END void loop----------------------------
 
- 
 // -------------------State Machine Functions---------------------//
 //                          BEGIN HERE                            //
 //----------------------------------------------------------------//
 
-
-
-//--------------------HOUSEKEEP Function-----------------
+//--------------------HOUSEKEEP Function--------------------------
 void runHOUSEKEEP()
 {
   display.ssd1306_command(0xAF); // turn OLED on
   oledOn();
-  
-  Serial.println();
-  Serial.println("-----------------------------------------HOUSEKEEP---");
+                                  Serial.println();
+                                  Serial.println("--------------------HOUSEKEEP---");
   
   if(tracknumActive < ROTARYMAX) railPower = OFF;
   if(railPower == ON)  digitalWrite(trackPowerLED_PIN, HIGH);
@@ -504,8 +468,6 @@ void runHOUSEKEEP()
   bandoText("TRACK",0,20,2,false);
   bandoText("ACTIVE TRACK:",0,55,1,true);
   
-    
-
   timerOLED.start(interval_OLED);   /*--start sleep timer here for when HOUSEKEEP 
                                       state is entered after moving through states
                                       and no knob twist.                         */
@@ -515,22 +477,19 @@ void runHOUSEKEEP()
 //-----------------------STAND_BY Function-----------------
 void runSTAND_BY()
 {
-  Serial.println("-----------------------------------------STAND_BY---");
-
+                                 Serial.println("-----------------------STAND_BY---");
     //---Begin main do-while loop checking for user input--------
   do
   {    
     if(timerOLED.done() == true){     //---check screen timer and put in
       oledOff();                      //   sleep mode if time out
     }
-    
     readEncoder();
     readAllSens();
     encoderSw1.tick();  //check for clicks
-
     if((mainSens_Report > 0) || (revSens_Report > 0))
     {
-      Serial.println("---to OCCUPIED from STAND_BY---");  //debug
+                                Serial.println("---to OCCUPIED from STAND_BY---"); 
       oledOn();                    
       runOCCUPIED();
     }
@@ -546,18 +505,14 @@ void runSTAND_BY()
   mode = TRACK_SETUP;                //---move on with new track assignment
 } 
 
-
 //-----------------------TRACK_SETUP- State Function-----------------------
 void runTRACK_SETUP()
 {
   readAllSens();
-  
   railPower = OFF;
   if(railPower == ON)  digitalWrite(trackPowerLED_PIN, HIGH);
   else  digitalWrite(trackPowerLED_PIN, LOW);
-
-  Serial.println("-----------------------------------------TRACK_SETUP---");
-  
+                            Serial.println("------------------------TRACK_SETUP---");
   writeTrackBits(crntMap.routes[tracknumActive]);
 
   display.clearDisplay();
@@ -565,7 +520,7 @@ void runTRACK_SETUP()
   bandoText("TRACK",0,20,2,false);
   tracknumChoiceText();  
   bandoText("WAIT!",0,50,2,true);
-    
+  
   timerTortoise.start(tortoiseInterval);   //--begin delay for Tortoises
   while(timerTortoise.running() == true)
   {
@@ -574,64 +529,55 @@ void runTRACK_SETUP()
   railPower = ON;
   if(railPower == ON)  digitalWrite(trackPowerLED_PIN, HIGH);
   else  digitalWrite(trackPowerLED_PIN, LOW);
-
   bailOut = true;                          //--reset (active low)
   leaveTrack_Setup();
   
 }  //---end track setup function-------------------
 
-
 void leaveTrack_Setup()
 {
-  Serial.println("---Entering leaveTrack_Setup---");
+                            Serial.println("---Entering leaveTrack_Setup---");
   readAllSens();
- 
   if((mainSens_Report > 0) || (revSens_Report > 0))
   {
-    Serial.println("---to OCCUPIED from leaveTrack_Setup---");
+                            Serial.println("---to OCCUPIED from leaveTrack_Setup---");
     mode = OCCUPIED;
   }
   else 
   {
-    Serial.println("--times up--leaving TrackSetup--");
+                            Serial.println("--times up--leaving TrackSetup--");
     mode = TRACK_ACTIVE;
   }
 }
-
 
 //-----------------------TRACK_ACTIVE State Function------------------
 void runTRACK_ACTIVE()
 {
   readAllSens();
-  
   display.clearDisplay();
   bandoText("PROCEED ON ",0,0,2,false);
   bandoText("TRACK",0,20,2,false);
   tracknumChoiceText();    
   bandoText("POWER ON",0,50,2,true);
-
-  Serial.println("-----------------------------------------TRACK_ACTIVE---");
+                            Serial.println("-----------------------TRACK_ACTIVE---");
   rev_LastDirection = 0; //reset for use during the next TRACK_ACTIVE call
   main_LastDirection = 0;
- 
   timerTrainIO.start(intervalTrainIO);
-  
   do
   {
      readAllSens();
      encoderSw1.tick();
      
-     //debug
-     /*Serial.print("main_LastDirection: ");
-     Serial.print(rev_LastDirection);
-     Serial.println(main_LastDirection);
-     Serial.println("-----Waiting for Train to Exit!");  */
+                            //debug
+                            /*Serial.print("main_LastDirection: ");
+                            Serial.print(rev_LastDirection);
+                            Serial.println(main_LastDirection);
+                            Serial.println("-----Waiting for Train to Exit!");  */
      
-    if (bailOut == 0)     //active low: active if doubleclick encoder knob
+    if (bailOut == 0)       //active low: active if doubleclick encoder knob
     {
       break;
     }
-
         //--true when outbound train completely leaves sensor  
     if (((mainPassByState == 1) && (main_LastDirection == 2)) ||
          ((rev_LastDirection == 2) && (revPassByState == 1)))           
@@ -639,7 +585,6 @@ void runTRACK_ACTIVE()
       break;
     }
   }
-  
   while(timerTrainIO.running() == true);
 
   mainPassByState = false;
@@ -654,12 +599,12 @@ void leaveTrack_Active()
   readAllSens();
   if((mainSens_Report > 0) || (revSens_Report > 0))
   {
-    Serial.println("----to OCCUPIED from leavTrack_Active---");
+                            Serial.println("--to OCCUPIED from leavTrack_Active-");
     mode = OCCUPIED;
   }
   else 
   {
-    Serial.println("--times up leaving TrackActive--");
+                            Serial.println("--times up leaving TrackActive--");
     mode = HOUSEKEEP;
   }
 }
@@ -668,9 +613,7 @@ void leaveTrack_Active()
 void runOCCUPIED()
 {
   Serial.println("OCCUPIED");
-
   display.clearDisplay();
-  
   while((mainSens_Report > 0) || (revSens_Report > 0))
   {
     readAllSens();
@@ -679,8 +622,7 @@ void runOCCUPIED()
     bandoText("OCCUPIED",0,20,2,false);
     bandoText("STOP!",20,42,2,true);
   }
-   
-  Serial.println("----Leaving OCCUPIED---");
+                          Serial.println("----Leaving OCCUPIED---");
   runHOUSEKEEP();
 }
 
@@ -689,10 +631,8 @@ void runOCCUPIED()
 void readEncoder()
 { 
   encoder.tick();
-  
   // get the choice physical position and calc the logical position
   int newPos = encoder.getPosition() * ROTARYSTEPS;
-    
   if (newPos < ROTARYMIN) {
     encoder.setPosition(ROTARYMIN / ROTARYSTEPS);
     newPos = ROTARYMIN;
@@ -701,21 +641,19 @@ void readEncoder()
     encoder.setPosition(ROTARYMAX / ROTARYSTEPS);
     newPos = ROTARYMAX;
   } 
-
   if (lastPos != newPos) {
     lastPos = newPos;
     tracknumChoice = newPos;
     oledOn();
-    
-            Serial.print(newPos);   
-            Serial.println();
-            Serial.print("Choice: ");
-            Serial.println(tracknumChoice);
-            Serial.print("Active: ");
-            Serial.println(tracknumActive);
-            Serial.print("bailOut:   ");
-            Serial.println(bailOut);  
-            //delay(50); 
+                        Serial.print(newPos);   
+                        Serial.println();
+                        Serial.print("Choice: ");
+                        Serial.println(tracknumChoice);
+                        Serial.print("Active: ");
+                        Serial.println(tracknumActive);
+                        Serial.print("bailOut:   ");
+                        Serial.println(bailOut);  
+                        //delay(50); 
 
     timerOLED.start(interval_OLED);   //--sleep timer for STAND_BY mode
     display.clearDisplay();
@@ -728,7 +666,7 @@ void readEncoder()
 
 void runMENU()
 {  
-  Serial.println("-----------------------------------------runMENU---");
+                        Serial.println("------------------------------runMENU---");
 
   oledOn();
   display.clearDisplay();
@@ -754,14 +692,11 @@ void readAllSens()
 void readMainSens() {
   debouncer1.update();  
   int mainInValue = debouncer1.read();
-    
-  if(mainInValue != mainIn_LastValue)     
-    {
+   if(mainInValue != mainIn_LastValue)
+   {
       if(mainInValue == 0) bitSet(mainSens_Report, 0);
       else bitClear(mainSens_Report, 0); 
-
       mainIn_LastValue = mainInValue;
-
       if (mainSens_Report > 0) 
       {
         mainSensTotal = mainSensTotal + mainSens_Report;
@@ -769,7 +704,6 @@ void readMainSens() {
       }
       else mainSensTotal = 0;   
     }
-    
   debouncer2.update();                 //--read mainOut sensor
   int mainOutValue = debouncer2.read();
                                        //--update history register: *Sens_Report    
@@ -792,16 +726,13 @@ void readMainSens() {
     //  successfully.  TODO--TODO--TODO  FIX BACKING OUT PROBLEM WHEN STARTING
     //  ENTERING OUTBOUND AND BACKING OUT INBOUND - TURNS OFF TIMER
     //---------end of note------  
-
     if(mainSensTotal == 0 && mainPassByTotal >= 6) 
       {
        mainPassByState = true;
        mainPassByTotal = 0;
       }
     else if(mainSensTotal == 0) mainPassByTotal = 0;
-
-    //--report mainLine Direction
-    if((mainSensTotal == 2) && (mainSens_Report == 2)) 
+    if((mainSensTotal == 2) && (mainSens_Report == 2)) //--report mainLine Direction
     { 
       mainDirection = 2;
       main_LastDirection = 2;
@@ -815,21 +746,17 @@ void readMainSens() {
     {
      mainDirection = 0;
     } 
-    
 }  // end readMainSen--
 
 void readRevSens() 
 { 
   debouncer3.update();
   int revInValue = debouncer3.read();
-    
   if(revInValue != revIn_LastValue)     
   {
     if(revInValue == 0) bitSet(revSens_Report, 0);
     else bitClear(revSens_Report, 0); 
-
     revIn_LastValue = revInValue;
-
      if (revSens_Report > 0) 
     {
       revSensTotal = revSensTotal + revSens_Report;
@@ -840,14 +767,11 @@ void readRevSens()
       
   debouncer4.update();
   int revOutValue = debouncer4.read();
-    
-  if(revOutValue != revOut_LastValue)     
+   if(revOutValue != revOut_LastValue)     
   {
     if(revOutValue == 0) bitSet(revSens_Report, 1);
     else bitClear(revSens_Report, 1); 
-
     revOut_LastValue = revOutValue;
-
     if (revSens_Report > 0) 
     {
       revSensTotal = revSensTotal + revSens_Report;
@@ -861,9 +785,7 @@ void readRevSens()
       revPassByTotal = 0;
     }
     else if(revSensTotal == 0) revPassByTotal = 0;
-
-    //--report revLoop Direction
-    if((revSensTotal == 2) && (revSens_Report == 2)) 
+    if((revSensTotal == 2) && (revSens_Report == 2)) //--report revLoop Direction
     {
       revDirection = 2;
       rev_LastDirection = 2;
@@ -877,10 +799,7 @@ void readRevSens()
     {
       revDirection = 0;
     }
-
 }  // end readrevSen--
-
-  
 
 // -----------------------Display Functions---------------------//
 //                          BEGIN HERE                          //
@@ -892,7 +811,7 @@ void bandoText(String text, int x, int y, int size, boolean d){
   display.setCursor(x,y);
   display.println(text);
   if(d){
-    display.display();
+  display.display();
   }
 }  
 
@@ -938,8 +857,6 @@ void oledOff()
   display.ssd1306_command(0xAE);
   oledState = false;
   }
-//--display functions end
-
 
 //----------------Rotary EncoderSw Click Functions--------------//
 //                          BEGIN HERE                          //
