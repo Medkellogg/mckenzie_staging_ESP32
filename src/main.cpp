@@ -70,6 +70,7 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <Fonts/FreeSansBold9pt7b.h>
 #include "bcsjTimer.h"
 #include <OneButton.h>
 #include <EEPROM.h>
@@ -79,42 +80,44 @@
 //#define Philadelphia crntMap
 //#define Cumberland crntMap
 
+
+
 //------------Setup sensor debounce from Bounce2 library-----
-#define mainSensInpin  26
-#define mainSensOutpin 27
-#define revSensInpin   12 
-#define revSensOutpin  14
+const byte mainSensInpin {26};
+const byte mainSensOutpin{27};
+const byte revSensInpin  {12};
+const byte revSensOutpin {14};
 
-#define INBOUND   1    
-#define OUTBOUND  2
-#define CLEAR     0
-#define ON        0
-#define OFF       1
+const byte INBOUND   {1};
+const byte OUTBOUND  {2};
+const byte CLEAR     {0};
+const byte ON        {0};
+const byte OFF       {1};
 
-#define trackPowerLED_PIN  4  //debug
+const byte trackPowerLED_PIN  {13};  //debug
 
-#define MAX_LADDER_TRACKS 13
-#define MAX_TURNOUTS      13
+const byte MAX_LADDER_TRACKS {13};
+const byte MAX_TURNOUTS      {13};
 
 //---Turnout bit masks are encoded for shift register input. T0 is
 //   always lsb for shift register 
-#define	THROWN_T0	  0x0001	//0000000000001	1
-#define	THROWN_T1	  0x0002	//0000000000010	2
-#define	THROWN_T2	  0x0004	//0000000000100	4
-#define	THROWN_T3	  0x0008	//0000000001000	8
-#define	THROWN_T4	  0x0010	//0000000010000	16
-#define	THROWN_T5	  0x0020	//0000000100000	32
-#define	THROWN_T6	  0x0040	//0000001000000	64
-#define	THROWN_T7	  0x0080	//0000010000000	128
-#define	THROWN_T8	  0x0100	//0000100000000	256
-#define	THROWN_T9	  0x0200	//0001000000000	512
-#define	THROWN_T10	0x0400	//0010000000000	1024
-#define	THROWN_T11	0x0800	//0100000000000	2048
-#define	THROWN_T12	0x1000	//1000000000000	4096
+const uint16_t	THROWN_T0	  {0x0001};	//0000000000001	1
+const uint16_t	THROWN_T1	  {0x0002};	//0000000000010	2
+const uint16_t	THROWN_T2	  {0x0004};	//0000000000100	4
+const uint16_t	THROWN_T3	  {0x0008};	//0000000001000	8
+const uint16_t	THROWN_T4	  {0x0010};	//0000000010000	16
+const uint16_t	THROWN_T5	  {0x0020};	//0000000100000	32
+const uint16_t	THROWN_T6	  {0x0040};	//0000001000000	64
+const uint16_t	THROWN_T7	  {0x0080};	//0000010000000	128
+const uint16_t	THROWN_T8	  {0x0100};	//0000100000000	256
+const uint16_t	THROWN_T9	  {0x0200};	//0001000000000	512
+const uint16_t	THROWN_T10	{0x0400};	//0010000000000	1024
+const uint16_t	THROWN_T11	{0x0800};	//0100000000000	2048
+const uint16_t	THROWN_T12	{0x1000};	//1000000000000	4096
 
 struct turnoutMap_t {
   uint8_t       numTracks;
-  uint8_t       numTurnouts;
+  uint8_t       startTrack;
   byte          defaultTrack;
   bool          revL;
   unsigned long trainIOtime;
@@ -133,26 +136,53 @@ struct turnoutMap_t {
 //    /      /      /      /      /      
 //___T0_____T1_____T2_____T3_____T4___________RevLoop
 
+
+//const turnoutMap_t Wheeling = {
+//             6,                 // numTracks
+//             1,                 // startTrack
+//             6,                 // defaultTrack
+//             true,              // have reverse track?
+//             1000000L * 60 * 1, // delay time in TRACK_ACTIVE
+//             "Wheeling",
+/* trk W0   */  //0,
+/* trk W1   */  //THROWN_T1+THROWN_T2+THROWN_T3+THROWN_T4,
+/* trk W2   */  //THROWN_T0+THROWN_T2+THROWN_T3+THROWN_T4,
+/* trk W3   */  //THROWN_T0+THROWN_T1+THROWN_T3+THROWN_T4,
+/* trk W4   */  //THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T4,
+/* trk W5   */  //THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3,
+/* trk RevL */  //THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3+THROWN_T4,
+/* trk A7   */  //0, /* not used */
+/* trk W8   */  //0, /* not used */ 
+/* trk W9   */  //0, /* not used */
+/* trk W10  */  //0, /* not used */
+/* trk W11  */  //0, /* not used */ 
+/* trk W12  */  //0  /* not used */
+//};
+
+/**********************************************************************
+*    THIS WHEELING PLAN IS A DEBUG SECTION--REMOVE--REMOVE--REMOVE--  *
+*    AFTER TESTING REPLACE WITH SECTION ABOVE                         *
+**********************************************************************/
 const turnoutMap_t Wheeling = {
-             6,                 // track count
-             5,                 // turnout count
-             6,                 // default track
+             12,                 // numTracks
+             7,                  // startTrack
+             12,                 // default track
              true,              // have reverse track?
-             1000000L * 60 * 1, // delay time in TRACK_ACTIVE
+             1000000L * 60 * 1,  // delay time in TRACK_ACTIVE
              "Wheeling",
-/* trk W0   */  0,
-/* trk W1   */  THROWN_T1+THROWN_T2+THROWN_T3+THROWN_T4,
-/* trk W2   */  THROWN_T0+THROWN_T2+THROWN_T3+THROWN_T4,
-/* trk W3   */  THROWN_T0+THROWN_T1+THROWN_T3+THROWN_T4,
-/* trk W4   */  THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T4,
-/* trk W5   */  THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3,
-/* trk RevL */  THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3+THROWN_T4,
-/* trk A7   */  0, /* not used */
-/* trk W8   */  0, /* not used */ 
-/* trk W9   */  0, /* not used */
-/* trk W10  */  0, /* not used */
-/* trk W11  */  0, /* not used */ 
-/* trk W12  */  0  /* not used */
+/* trk W0   */  0, /* not used */
+/* trk W1   */  0, /* not used */
+/* trk W2   */  0, /* not used */
+/* trk W3   */  0, /* not used */
+/* trk W4   */  0, /* not used */
+/* trk W5   */  0, /* not used */
+/* trk W6   */  0, /* not used */
+/* trk A7   */  THROWN_T9+THROWN_T10+THROWN_T11+THROWN_T12,
+/* trk W8   */  THROWN_T8+THROWN_T10+THROWN_T11+THROWN_T12,
+/* trk W9   */  THROWN_T8+THROWN_T9+THROWN_T11+THROWN_T12,
+/* trk W10  */  THROWN_T8+THROWN_T9+THROWN_T10+THROWN_T12,
+/* trk W11  */  THROWN_T8+THROWN_T9+THROWN_T10+THROWN_T11, 
+/* trk W12  */  THROWN_T8+THROWN_T9+THROWN_T10+THROWN_T11+THROWN_T12
 };
 
 //--------------------Parkersburg Staging Yard------------------            
@@ -298,13 +328,13 @@ void tracknumActChoText();
 
 //---RotaryEncoder DEFINEs for numbers of tracks to access with encoder
 #define ROTARYSTEPS 1
-#define ROTARYMIN   1
+#define ROTARYMIN   crntMap.startTrack
 #define ROTARYMAX   crntMap.numTracks
 
 //--- Setup a RotaryEncoder for GPIO pins 16, 17:
 RotaryEncoder encoder(16, 17);
 byte          lastPos = -1;              //-- Last known rotary position.
-OneButton     encoderSw1(13, true);      //---Setup  OneButton for rotary 
+OneButton     encoderSw1(4, true);      //---Setup  OneButton for rotary 
                                          //   encoder sw on pin 13 - active low
 
 //---RotaryEncoder Setup and variables are in this section---------
@@ -372,7 +402,9 @@ void setup()
       Serial.println(F("SSD1306 allocation failed"));
       for (;;); // Don't proceed, loop forever
     }
-  
+
+  display.setFont(&FreeSansBold9pt7b);
+    
   //---Setup the sensor pins
   pinMode(mainSensInpin, INPUT_PULLUP); pinMode(mainSensOutpin, INPUT_PULLUP);
   pinMode(revSensInpin, INPUT_PULLUP);  pinMode(revSensOutpin, INPUT_PULLUP);
@@ -398,14 +430,15 @@ void setup()
   digitalWrite(trackPowerLED_PIN, HIGH);
   
   display.clearDisplay();
-  bandoText("B&O RAIL",25,0,2,false);
-  bandoText("JEROEN GERRITSEN'S",8,20,1,true);
-  bandoText("McKENZIE",0,33,1,true);
-  bandoText(crntMap.mapName,0,50,1,true);
+  bandoText("B&O RAIL",25,12,1,false);
+  //bandoText("JEROEN GERRITSEN'S",8,20,1,true);
+  bandoText("Staging Yard:",0,36,1,true);
+  bandoText(crntMap.mapName,0,60,1,true);
   display.display();
 
   tracknumChoice = crntMap.routes[crntMap.defaultTrack];
   writeTrackBits(crntMap.routes[crntMap.defaultTrack]);  //align to default track
+  
   
   delay(5000);
   display.clearDisplay();
@@ -443,12 +476,14 @@ void loop()
                           Serial.println(rev_LastDirection);
                           Serial.print("tracknumActive:    ");
                           Serial.print(tracknumActive);
-                          //---end debug printing  */ 
-}      //------------------------END void loop----------------------------
+ //---end debug printing-------------*/
+}     
+ //------------------------END void loop-------------------
+ 
 
-// -------------------State Machine Functions---------------------//
-//                          BEGIN HERE                            //
-//----------------------------------------------------------------//
+/* -------------------State Machine Functions---------------------*
+ *                          BEGIN HERE                            *
+ *----------------------------------------------------------------*/
 
 //--------------------HOUSEKEEP Function--------------------------
 void runHOUSEKEEP()
@@ -458,15 +493,15 @@ void runHOUSEKEEP()
                                   Serial.println();
                                   Serial.println("--------------------HOUSEKEEP---");
   
-  if(tracknumActive < ROTARYMAX) railPower = OFF;
+  if((tracknumActive < ROTARYMAX) || (crntMap.revL == false)) railPower = OFF;
   if(railPower == ON)  digitalWrite(trackPowerLED_PIN, HIGH);
   else  digitalWrite(trackPowerLED_PIN, LOW);
     
   display.clearDisplay();
   tracknumActChoText();
-  bandoText("SELECT TRK",0,0,2,false);
-  bandoText("TRACK",0,20,2,false);
-  bandoText("ACTIVE TRACK:",0,55,1,true);
+  bandoText("   -SELECT-",0,12,1,false);
+  bandoText("TRACK:",0,36,1,false);
+  bandoText("Active:",0,60,1,true);
   
   timerOLED.start(interval_OLED);   /*--start sleep timer here for when HOUSEKEEP 
                                       state is entered after moving through states
@@ -516,10 +551,10 @@ void runTRACK_SETUP()
   writeTrackBits(crntMap.routes[tracknumActive]);
 
   display.clearDisplay();
-  bandoText("ALIGNING",0,0,2,false);
-  bandoText("TRACK",0,20,2,false);
+  bandoText(" -ALIGNING-",0,12,1,false);
+  bandoText("TRACK:",0,36,1,false);
   tracknumChoiceText();  
-  bandoText("WAIT!",0,50,2,true);
+  bandoText("WAIT!",20,60,1,true);
   
   timerTortoise.start(tortoiseInterval);   //--begin delay for Tortoises
   while(timerTortoise.running() == true)
@@ -555,10 +590,10 @@ void runTRACK_ACTIVE()
 {
   readAllSens();
   display.clearDisplay();
-  bandoText("PROCEED ON ",0,0,2,false);
-  bandoText("TRACK",0,20,2,false);
+  bandoText(" -PROCEED-",0,12,1,false);
+  bandoText("TRACK:",0,36,1,false);
   tracknumChoiceText();    
-  bandoText("POWER ON",0,50,2,true);
+  bandoText("Timer is ON",0,60,1,true);
                             Serial.println("-----------------------TRACK_ACTIVE---");
   rev_LastDirection = 0; //reset for use during the next TRACK_ACTIVE call
   main_LastDirection = 0;
@@ -618,9 +653,9 @@ void runOCCUPIED()
   {
     readAllSens();
     Serial.println("----to OCCUPIED from OCCUPIED---");
-    bandoText("YARD LEAD",0,0,2,false);
-    bandoText("OCCUPIED",0,20,2,false);
-    bandoText("STOP!",20,42,2,true);
+    bandoText("YARD LEAD",0,12,1,false);
+    bandoText("OCCUPIED",0,36,1,false);
+    bandoText("STOP!",20,60,1,true);
   }
                           Serial.println("----Leaving OCCUPIED---");
   runHOUSEKEEP();
@@ -644,23 +679,24 @@ void readEncoder()
   if (lastPos != newPos) {
     lastPos = newPos;
     tracknumChoice = newPos;
-    oledOn();
-                        Serial.print(newPos);   
+    //oledOn();
+                        /*Serial.print(newPos);   
                         Serial.println();
                         Serial.print("Choice: ");
                         Serial.println(tracknumChoice);
                         Serial.print("Active: ");
                         Serial.println(tracknumActive);
                         Serial.print("bailOut:   ");
-                        Serial.println(bailOut);  
+                        Serial.println(bailOut);  */
                         //delay(50); 
 
     timerOLED.start(interval_OLED);   //--sleep timer for STAND_BY mode
     display.clearDisplay();
     tracknumActChoText();
-    bandoText("ACTIVE TRACK:",0,55,1,false);
-    bandoText("SELECT TRK",0,0,2,false);
-    bandoText("TRACK",0,20,2,true);
+    bandoText("Active:",0,60,1,false);
+    bandoText("-SELECT-",0,12,1,false);
+    bandoText("TRACK:",0,36,1,true);
+    
   }
 } 
 
@@ -670,8 +706,8 @@ void runMENU()
 
   oledOn();
   display.clearDisplay();
-  bandoText("SETUP MENU",0,0,2,false);
-  bandoText("Wrt EEPROM",0,20,2,true);
+  bandoText("SETUP MENU",0,12,1,false);
+  bandoText("Wrt EEPROM",0,36,1,true);
   delay(3000);
   
   runHOUSEKEEP();
@@ -820,8 +856,8 @@ void tracknumChoiceText()
   enum {BufSize=3};  
   char choiceBuf[BufSize];
   snprintf (choiceBuf, BufSize, "%2d", tracknumChoice);
-    if((tracknumChoice == ROTARYMAX) && (crntMap.revL  == true) ) bandoText("RevL",78,20,2,false);
-    else bandoText(choiceBuf,82,20,2,false);
+    if((tracknumChoice == ROTARYMAX) && (crntMap.revL  == true) ) bandoText("RevL",78,36,1,false);
+    else bandoText(choiceBuf,82,36,1,false);
 }
 
 void tracknumActiveText()    //TODO________may not need--review-----
@@ -829,8 +865,8 @@ void tracknumActiveText()    //TODO________may not need--review-----
   enum {BufSize=3};  
   char activeBuf[BufSize];
   snprintf (activeBuf, BufSize, "%2d", tracknumActive);
-    if(tracknumActive == ROTARYMAX) bandoText("RevL",78,50,2,false);
-    else bandoText(activeBuf,75,50,2,false);
+    if(tracknumActive == ROTARYMAX) bandoText("RevL",78,60,1,false);
+    else  bandoText(activeBuf,75,60,1,false);
 }
 
 void tracknumActChoText()
@@ -839,11 +875,11 @@ void tracknumActChoText()
   char activeBuf[BufSize];
   char choiceBuf[BufSize];
   snprintf (choiceBuf, BufSize, "%2d", tracknumChoice);
-    if((tracknumChoice == ROTARYMAX) && (crntMap.revL  == true) ) bandoText("RevL",78,20,2,false);
-    else bandoText(choiceBuf,82,20,2,false);
+    if((tracknumChoice == ROTARYMAX) && (crntMap.revL  == true) ) bandoText("RevL",78,36,1,false);
+    else  bandoText(choiceBuf,88,40,2,false);
   snprintf (activeBuf, BufSize, "%2d", tracknumActive);
-    if((tracknumActive == ROTARYMAX) && (crntMap.revL  == true)) bandoText("RevL",78,50,2,false);
-    else bandoText(activeBuf,75,50,2,false); 
+    if((tracknumActive == ROTARYMAX) && (crntMap.revL  == true)) bandoText("RevL",78,60,1,false);
+    else  bandoText(activeBuf,75,60,1,false); 
 }  
 
 void oledOn()
@@ -885,6 +921,12 @@ void longPressStart1(){       //--hold for 3 seconds goto Main Setup Menu
 void writeTrackBits(uint16_t track)
 {
   digitalWrite(latchPin, LOW);
-  shiftOut(dataPin, clockPin, LSBFIRST, track);
+  shiftOut(dataPin, clockPin, MSBFIRST, (track >> 8));
+  shiftOut(dataPin, clockPin, MSBFIRST, track);
   digitalWrite(latchPin, HIGH);
+            //Serial.print("track: ");
+            //Serial.println(track);
+            //Serial.println(track, BIN);
+  
 }  
+
