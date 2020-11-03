@@ -20,7 +20,7 @@
 // Functions
 //   *Rotary encoder with switch and OLED screen are the controls on the panel
 //   *Sequence:
-//      Single click or turn encoder to wake up screen. 
+//      Single click to wake up screen. 
 //      Select track choice with knob
 //      Single click knob to align track: track power off and route aligns 
 //      Alingnment completes: Track power on, 4 minute timer on
@@ -45,7 +45,7 @@
 //
 //   Direction Naming Convention - In all cases you may think of a point "between"
 //   the yard lead turnout and the reverse loop turnout as the center of the
-//   universe.  Therefore INBOUND is always towards that point on either sensor
+//   universe.  Therefore, INBOUND is always towards that point on either sensor
 //   and OUTBOUND the reverse.   
 //
 //
@@ -60,7 +60,7 @@
 //   train is within the sensor pair.
 //
 //   Sensor Busy - Sensor reports busy when either sensor of either sensor 
-//   pair is true and remains so until all return false.
+//   pair is true, and remains so until all return false.
 //---------------------------------------------------------------------------
 
 #include <Arduino.h>
@@ -75,18 +75,17 @@
 #include <OneButton.h>
 #include <EEPROM.h>
 
-#define Wheeling crntMap
+#define test crntMap
 //#define Parkersburg crntMap
 //#define Philadelphia crntMap
 //#define Cumberland crntMap
 
 
-
 //------------Setup sensor debounce from Bounce2 library-----
 const byte mainSensInpin {26};
 const byte mainSensOutpin{27};
-const byte revSensInpin  {12};
-const byte revSensOutpin {14};
+const byte revSensInpin  {14};
+const byte revSensOutpin {12};
 
 const byte INBOUND   {1};
 const byte OUTBOUND  {2};
@@ -94,26 +93,29 @@ const byte CLEAR     {0};
 const byte ON        {0};
 const byte OFF       {1};
 
-const byte trackPowerLED_PIN  {13};  //debug
+const byte trackPowerLED_PIN  {2};  
 
-const byte MAX_LADDER_TRACKS {13};
-const byte MAX_TURNOUTS      {13};
+const byte MAX_LADDER_TRACKS {17};
+const byte MAX_TURNOUTS      {17};
 
 //---Turnout bit masks are encoded for shift register input. T0 is
 //   always lsb for shift register 
-const uint16_t	THROWN_T0	  {0x0001};	//0000000000001	1
-const uint16_t	THROWN_T1	  {0x0002};	//0000000000010	2
-const uint16_t	THROWN_T2	  {0x0004};	//0000000000100	4
-const uint16_t	THROWN_T3	  {0x0008};	//0000000001000	8
-const uint16_t	THROWN_T4	  {0x0010};	//0000000010000	16
-const uint16_t	THROWN_T5	  {0x0020};	//0000000100000	32
-const uint16_t	THROWN_T6	  {0x0040};	//0000001000000	64
-const uint16_t	THROWN_T7	  {0x0080};	//0000010000000	128
-const uint16_t	THROWN_T8	  {0x0100};	//0000100000000	256
-const uint16_t	THROWN_T9	  {0x0200};	//0001000000000	512
-const uint16_t	THROWN_T10	{0x0400};	//0010000000000	1024
-const uint16_t	THROWN_T11	{0x0800};	//0100000000000	2048
-const uint16_t	THROWN_T12	{0x1000};	//1000000000000	4096
+const uint16_t	THROWN_T0	  {0x0001};	//0000000000000001	1
+const uint16_t	THROWN_T1	  {0x0002};	//0000000000000010	2
+const uint16_t	THROWN_T2	  {0x0004};	//0000000000000100	4
+const uint16_t	THROWN_T3	  {0x0008};	//0000000000001000	8
+const uint16_t	THROWN_T4	  {0x0010};	//0000000000010000	16
+const uint16_t	THROWN_T5	  {0x0020};	//0000000000100000	32
+const uint16_t	THROWN_T6	  {0x0040};	//0000000001000000	64
+const uint16_t	THROWN_T7	  {0x0080};	//0000000010000000	128
+const uint16_t	THROWN_T8	  {0x0100};	//0000000100000000	256
+const uint16_t	THROWN_T9	  {0x0200};	//0000001000000000	512
+const uint16_t	THROWN_T10	{0x0400};	//0000010000000000	1024
+const uint16_t	THROWN_T11	{0x0800};	//0000100000000000	2048
+const uint16_t	THROWN_T12	{0x1000};	//0001000000000000	4096
+const uint16_t	THROWN_T13	{0x2000};	//0010000000000000	8192
+const uint16_t	THROWN_T14	{0x4000};	//0100000000000000	16384
+const uint16_t	THROWN_T15	{0x8000};	//1000000000000000	32768
 
 struct turnoutMap_t {
   uint8_t       numTracks;
@@ -160,29 +162,33 @@ struct turnoutMap_t {
 //};
 
 /**********************************************************************
-*    THIS WHEELING PLAN IS A DEBUG SECTION--REMOVE--REMOVE--REMOVE--  *
-*    AFTER TESTING REPLACE WITH SECTION ABOVE                         *
+*    THIS "test" PLAN IS USED TO TEST SINGLE TORTOISES.  
+*    A SINGLE TORTOISE IS SELECTED FOR EACH ROUTE.                         
 **********************************************************************/
-const turnoutMap_t Wheeling = {
-             12,                 // numTracks
-             7,                  // startTrack
-             12,                 // default track
-             true,              // have reverse track?
+const turnoutMap_t test = {
+             17,                 // numTracks
+             1,                  // startTrack
+             17,                 // default track
+             true,               // have reverse track?
              1000000L * 60 * 1,  // delay time in TRACK_ACTIVE
-             "Wheeling",
+             "Test",
 /* trk W0   */  0, /* not used */
-/* trk W1   */  0, /* not used */
-/* trk W2   */  0, /* not used */
-/* trk W3   */  0, /* not used */
-/* trk W4   */  0, /* not used */
-/* trk W5   */  0, /* not used */
-/* trk W6   */  0, /* not used */
-/* trk A7   */  THROWN_T9+THROWN_T10+THROWN_T11+THROWN_T12,
-/* trk W8   */  THROWN_T8+THROWN_T10+THROWN_T11+THROWN_T12,
-/* trk W9   */  THROWN_T8+THROWN_T9+THROWN_T11+THROWN_T12,
-/* trk W10  */  THROWN_T8+THROWN_T9+THROWN_T10+THROWN_T12,
-/* trk W11  */  THROWN_T8+THROWN_T9+THROWN_T10+THROWN_T11, 
-/* trk W12  */  THROWN_T8+THROWN_T9+THROWN_T10+THROWN_T11+THROWN_T12
+/* trk W1   */  THROWN_T0, 
+/* trk W2   */  THROWN_T1, 
+/* trk W3   */  THROWN_T2, 
+/* trk W4   */  THROWN_T3+THROWN_T7+THROWN_T9,  
+/* trk W5   */  THROWN_T4, 
+/* trk W6   */  THROWN_T5, 
+/* trk A7   */  THROWN_T6,
+/* trk W8   */  THROWN_T7,
+/* trk W9   */  THROWN_T8,
+/* trk W10  */  THROWN_T9,
+/* trk W11  */  THROWN_T10, 
+/* trk W12  */  THROWN_T11,
+/* trk W13  */  THROWN_T12,
+/* trk W14  */  THROWN_T13,
+/* trk W15  */  THROWN_T14,
+/* trk W16  */  THROWN_T15,
 };
 
 //--------------------Parkersburg Staging Yard------------------            
@@ -301,9 +307,9 @@ bcsjTimer  timerTortoise;
 bcsjTimer  timerTrainIO;
 
 //---Timer Variables---
-unsigned long interval_OLED    = 1000000L * 60 * 0.5;
-unsigned long tortoiseInterval = 1000000L * 3;
-unsigned long intervalTrainIO  = crntMap.trainIOtime;
+unsigned long interval_OLED    = 1000000L * 60 * 0.5;  //screen timeout for sleep
+unsigned long interval_Tortoise = 1000000L * 3;         //Tortoise run time interval
+unsigned long interval_TrainIO  = crntMap.trainIOtime;  //Time before trk power goes off
 
 // Instantiate a Bounce object
 Bounce debouncer1 = Bounce(); Bounce debouncer2 = Bounce(); 
@@ -332,7 +338,7 @@ void tracknumActChoText();
 #define ROTARYMAX   crntMap.numTracks
 
 //--- Setup a RotaryEncoder for GPIO pins 16, 17:
-RotaryEncoder encoder(16, 17);
+RotaryEncoder encoder(17, 16);
 byte          lastPos = -1;              //-- Last known rotary position.
 OneButton     encoderSw1(4, true);      //---Setup  OneButton for rotary 
                                          //   encoder sw on pin 13 - active low
@@ -430,9 +436,9 @@ void setup()
   digitalWrite(trackPowerLED_PIN, HIGH);
   
   display.clearDisplay();
-  bandoText("B&O RAIL",25,12,1,false);
+  bandoText("BOOT UP",25,12,1,false);
   //bandoText("JEROEN GERRITSEN'S",8,20,1,true);
-  bandoText("Staging Yard:",0,36,1,true);
+  bandoText("Active Yard:",0,36,1,true);
   bandoText(crntMap.mapName,0,60,1,true);
   display.display();
 
@@ -446,7 +452,7 @@ void setup()
 } //-----------------------End setup-----------------------------
 
 //--------------------------------------------------------------//
-//                          void loop()                         //
+//                       M A I N  L O O P                       //
 //--------------------------------------------------------------//
 
 void loop() 
@@ -478,11 +484,16 @@ void loop()
                           Serial.print(tracknumActive);
  //---end debug printing-------------*/
 }     
- //------------------------END void loop-------------------
+ //------------------------END main loop-------------------
  
 
-/* -------------------State Machine Functions---------------------*
- *                          BEGIN HERE                            *
+/* ---------------------------------------------------------------*
+ *                                                                * 
+ *                                                                * 
+ *            S T A T E  M A C H I N E  F U N C T I O N S         *
+ *                                                                * 
+ *                                                                * 
+ *                                                                * 
  *----------------------------------------------------------------*/
 
 //--------------------HOUSEKEEP Function--------------------------
@@ -556,7 +567,7 @@ void runTRACK_SETUP()
   tracknumChoiceText();  
   bandoText("WAIT!",20,60,1,true);
   
-  timerTortoise.start(tortoiseInterval);   //--begin delay for Tortoises
+  timerTortoise.start(interval_Tortoise);   //--begin delay for Tortoises
   while(timerTortoise.running() == true)
   {
    readAllSens();
@@ -593,11 +604,11 @@ void runTRACK_ACTIVE()
   bandoText(" -PROCEED-",0,12,1,false);
   bandoText("TRACK:",0,36,1,false);
   tracknumChoiceText();    
-  bandoText("Timer is ON",0,60,1,true);
+  bandoText("Trk Pwr: ON",0,60,1,true);
                             Serial.println("-----------------------TRACK_ACTIVE---");
   rev_LastDirection = 0; //reset for use during the next TRACK_ACTIVE call
   main_LastDirection = 0;
-  timerTrainIO.start(intervalTrainIO);
+  timerTrainIO.start(interval_TrainIO);
   do
   {
      readAllSens();
@@ -713,11 +724,11 @@ void runMENU()
   runHOUSEKEEP();
 }
 
-//---------------------Updating Sensor Functions------------------
+//-----------------------UPDATE SENSOR FUNCTIONS-----------------------
 //  All functions in this section update and track sensor information: 
 //  Busy, Direction, PassBy.  Only the mainOut sensor is documented.  
 //  The remaining three work identically.
-//------------------------------end of note-----------------------
+//------------------------------end of note----------------------------
 
 void readAllSens() 
   {
@@ -837,7 +848,7 @@ void readRevSens()
     }
 }  // end readrevSen--
 
-// -----------------------Display Functions---------------------//
+// -----------------------DISPLAY FUNCTIONS---------------------//
 //                          BEGIN HERE                          //
 //--------------------------------------------------------------//
 
@@ -894,9 +905,9 @@ void oledOff()
   oledState = false;
   }
 
-//----------------Rotary EncoderSw Click Functions--------------//
-//                          BEGIN HERE                          //
-//--------------------------------------------------------------//
+//----------ROTARY ENCODER AND ENCODER SWITCH FUNCTIONS-----------//
+//                          BEGIN HERE                            //
+//----------------------------------------------------------------//
 
 void click1(){                //--singleclick: if sleep awaken OLED
   if(oledState == false){       
