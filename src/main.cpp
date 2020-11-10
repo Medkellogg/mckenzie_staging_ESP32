@@ -75,9 +75,9 @@
 #include <OneButton.h>
 #include <EEPROM.h>
 
-#define test crntMap
+//#define test crntMap
 //#define Parkersburg crntMap
-//#define Philadelphia crntMap
+#define Bayview crntMap
 //#define Cumberland crntMap
 
 
@@ -100,22 +100,22 @@ const byte MAX_TURNOUTS      {17};
 
 //---Turnout bit masks are encoded for shift register input. T0 is
 //   always lsb for shift register 
-const uint16_t	THROWN_T0	  {0x0001};	//0000000000000001	1
-const uint16_t	THROWN_T1	  {0x0002};	//0000000000000010	2
-const uint16_t	THROWN_T2	  {0x0004};	//0000000000000100	4
-const uint16_t	THROWN_T3	  {0x0008};	//0000000000001000	8
-const uint16_t	THROWN_T4	  {0x0010};	//0000000000010000	16
-const uint16_t	THROWN_T5	  {0x0020};	//0000000000100000	32
-const uint16_t	THROWN_T6	  {0x0040};	//0000000001000000	64
-const uint16_t	THROWN_T7	  {0x0080};	//0000000010000000	128
-const uint16_t	THROWN_T8	  {0x0100};	//0000000100000000	256
-const uint16_t	THROWN_T9	  {0x0200};	//0000001000000000	512
-const uint16_t	THROWN_T10	{0x0400};	//0000010000000000	1024
-const uint16_t	THROWN_T11	{0x0800};	//0000100000000000	2048
-const uint16_t	THROWN_T12	{0x1000};	//0001000000000000	4096
-const uint16_t	THROWN_T13	{0x2000};	//0010000000000000	8192
-const uint16_t	THROWN_T14	{0x4000};	//0100000000000000	16384
-const uint16_t	THROWN_T15	{0x8000};	//1000000000000000	32768
+const uint16_t	THROWN_S1	  {0x0001};	//0000000000000001	1
+const uint16_t	THROWN_S2	  {0x0002};	//0000000000000010	2
+const uint16_t	THROWN_S3	  {0x0004};	//0000000000000100	4
+const uint16_t	THROWN_S4	  {0x0008};	//0000000000001000	8
+const uint16_t	THROWN_S5	  {0x0010};	//0000000000010000	16
+const uint16_t	THROWN_S6	  {0x0020};	//0000000000100000	32
+const uint16_t	THROWN_S7	  {0x0040};	//0000000001000000	64
+const uint16_t	THROWN_S8   {0x0080};	//0000000010000000	128
+const uint16_t	THROWN_S9	  {0x0100};	//0000000100000000	256
+const uint16_t	THROWN_S10  {0x0200};	//0000001000000000	512
+const uint16_t	THROWN_S11	{0x0400};	//0000010000000000	1024
+const uint16_t	THROWN_S12	{0x0800};	//0000100000000000	2048
+const uint16_t	THROWN_S13	{0x1000};	//0001000000000000	4096
+const uint16_t	THROWN_S14	{0x2000};	//0010000000000000	8192
+const uint16_t	THROWN_S15	{0x4000};	//0100000000000000	16384
+const uint16_t	THROWN_S16	{0x8000};	//1000000000000000	32768
 
 struct turnoutMap_t {
   uint8_t       numTracks;
@@ -168,27 +168,27 @@ struct turnoutMap_t {
 const turnoutMap_t test = {
              17,                 // numTracks
              1,                  // startTrack
-             17,                 // default track
+             0,                  // default track
              true,               // have reverse track?
              1000000L * 60 * 1,  // delay time in TRACK_ACTIVE
-             "Test",
+             "Test",             // map name
 /* trk W0   */  0, /* not used */
-/* trk W1   */  THROWN_T0, 
-/* trk W2   */  THROWN_T1, 
-/* trk W3   */  THROWN_T2, 
-/* trk W4   */  THROWN_T3+THROWN_T7+THROWN_T9,  
-/* trk W5   */  THROWN_T4, 
-/* trk W6   */  THROWN_T5, 
-/* trk A7   */  THROWN_T6,
-/* trk W8   */  THROWN_T7,
-/* trk W9   */  THROWN_T8,
-/* trk W10  */  THROWN_T9,
-/* trk W11  */  THROWN_T10, 
-/* trk W12  */  THROWN_T11,
-/* trk W13  */  THROWN_T12,
-/* trk W14  */  THROWN_T13,
-/* trk W15  */  THROWN_T14,
-/* trk W16  */  THROWN_T15,
+/* SWITCH 1   */  THROWN_S1, 
+/* SWITCH 2   */  THROWN_S2, 
+/* SWITCH 3   */  THROWN_S3, 
+/* SWITCH 4   */  THROWN_S4,  
+/* SWITCH 5   */  THROWN_S5, 
+/* SWITCH 6   */  THROWN_S6, 
+/* SWITCH 7   */  THROWN_S7,
+/* SWITCH 8   */  THROWN_S8,
+/* SWITCH 9   */  THROWN_S9,
+/* SWITCH 10  */  THROWN_S10,
+/* SWITCH 11  */  THROWN_S11, 
+/* SWITCH 12  */  THROWN_S12,
+/* SWITCH 13  */  THROWN_S13,
+/* SWITCH 14  */  THROWN_S14,
+/* SWITCH 15  */  THROWN_S15,
+/* SWITCH 16  */  THROWN_S16,
 };
 
 //--------------------Parkersburg Staging Yard------------------            
@@ -205,20 +205,21 @@ const turnoutMap_t test = {
 //  T0__/  
 //  | 
 //  
+
 const turnoutMap_t Parkersburg = {
-             6,                 // track count
-             5,                 // turnout count
+             6,                 // numTrack
+             5,                 // startTrack
              1,                 // default track
              false,             // have reverse track?
              1000000L * 60 * 1, // delay time in TRACK_ACTIVE
-             "Parkersburg",
+             "Parkersburg",     // map name
 /* trk P0   */  0,
 /* trk P1   */  0,
-/* trk P2   */  THROWN_T4,
-/* trk P3   */  THROWN_T0,
-/* trk P4   */  THROWN_T0+THROWN_T1,
-/* trk P5   */  THROWN_T0+THROWN_T1+THROWN_T2,
-/* trk P6   */  THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3,
+/* trk P2   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
+/* trk P3   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
+/* trk P4   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
+/* trk P5   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
+/* trk P6   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
 /* trk P7   */  0, /* not used */
 /* trk P8   */  0, /* not used */ 
 /* trk P9   */  0, /* not used */
@@ -227,7 +228,8 @@ const turnoutMap_t Parkersburg = {
 /* trk P12  */  0  /* not used */
 };
 
-//----------------------Philadelphia Staging Yard-------------------------
+
+//----------------------Bayview Staging Yard-------------------------
 //  All turnouts are RH: the "normal" position selects active track.  
 //  RevLoop power does not cycle off when RevLoop route selected.        
 //         ______W1
@@ -238,26 +240,26 @@ const turnoutMap_t Parkersburg = {
 //    /      /      /      /      /      
 //___T0_____T1_____T2_____T3_____T4___________RevLoop
 
-const turnoutMap_t Philadelphia = {
-             6,                 // track count
-             5,                 // turnout count
+const turnoutMap_t Bayview = {
+             12,                // numTracks
+             1,                 // startTrack
              12,                // default track
              true,              // have reverse track?
              1000000L * 60 * 1, // delay time in TRACK_ACTIVE
-             "Philadelphia",
-/* trk W0   */  0,
-/* trk W1   */  THROWN_T1+THROWN_T2+THROWN_T3+THROWN_T4,
-/* trk W2   */  THROWN_T0+THROWN_T2+THROWN_T3+THROWN_T4,
-/* trk W3   */  THROWN_T0+THROWN_T1+THROWN_T3+THROWN_T4,
-/* trk W4   */  THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T4,
-/* trk W5   */  THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3,
-/* trk RevL */  THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3+THROWN_T4,
-/* trk A7   */  0, /* not used */
-/* trk W8   */  0, /* not used */ 
-/* trk W9   */  0, /* not used */
-/* trk W10  */  0, /* not used */
-/* trk W11  */  0, /* not used */ 
-/* trk W12  */  0  /* not used */
+             "Bayview",
+/* trk 0    */  0,  /* not used  */
+/* trk B1   */  THROWN_S1+THROWN_S2+THROWN_S3,
+/* trk B2   */  THROWN_S1+THROWN_S2,
+/* trk B3   */  THROWN_S1+THROWN_S5,
+/* trk B4   */  THROWN_S1,
+/* trk B5   */  THROWN_S6+THROWN_S7+THROWN_S8,
+/* trk B6   */  THROWN_S6+THROWN_S7,
+/* trk B7   */  THROWN_S6+THROWN_S9,
+/* trk B8   */  THROWN_S6,
+/* trk B9   */  THROWN_S10+THROWN_S11, 
+/* trk B10  */  THROWN_S10,
+/* trk B11  */  0,  /*  all switches in Normal position  */
+/* trk RevL */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
 };
 
 //----------------------Cumberland Staging Yard-------------------------
@@ -272,19 +274,19 @@ const turnoutMap_t Philadelphia = {
 //___T0_____T1_____T2_____T3_____T4___________RevLoop
 
 const turnoutMap_t Cumberland = {
-             6,                 // track count
-             5,                 // turnout count
-             12,                // default track
+             6,                 // numTrack - total in yard
+             5,                 // startTrack - start counting at this num
+             12,                // default track - startup track
              true,              // have reverse track?
              1000000L * 60 * 1, // delay time in TRACK_ACTIVE
              "Cumberland",
 /* trk W0   */  0,
-/* trk W1   */  THROWN_T1+THROWN_T2+THROWN_T3+THROWN_T4,
-/* trk W2   */  THROWN_T0+THROWN_T2+THROWN_T3+THROWN_T4,
-/* trk W3   */  THROWN_T0+THROWN_T1+THROWN_T3+THROWN_T4,
-/* trk W4   */  THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T4,
-/* trk W5   */  THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3,
-/* trk RevL */  THROWN_T0+THROWN_T1+THROWN_T2+THROWN_T3+THROWN_T4,
+/* trk W1   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
+/* trk W2   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
+/* trk W3   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
+/* trk W4   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
+/* trk W5   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
+/* trk RevL */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
 /* trk A7   */  0, /* not used */
 /* trk W8   */  0, /* not used */ 
 /* trk W9   */  0, /* not used */
@@ -467,7 +469,7 @@ void loop()
   else if (mode ==     OCCUPIED) {runOCCUPIED();}
   else if (mode ==         MENU) {runMENU();}
   
-  /*----debug terminal print----------------
+  /*----debug terminal print----------------*/
                           Serial.print("mainSensTotal:      ");
                           Serial.print(mainSensTotal);
                           Serial.print("           revSensTotal:  ");
