@@ -1,0 +1,54 @@
+
+
+Setup as single function or state machine?
+
+Operations - High level
+    1. At main screen Hold switch down 5 seconds to enter Menu function
+    2. MenuSelection
+        a.Top Menu Level - 5 states
+            1. Yard selection - 1 to 7 all yards
+            2. Time selection - Number of minutes from 0 to 10
+            3. Exit - go back to program
+
+Yard Selection
+    1. 1 to 7
+    2. Spin knob to count
+    3. Click selection - new pos = yard selection
+    4. Show Apply and Cancel choice
+        a. Apply selection (write eeprom) - rtn to main menu
+        b. Cancel selection (no write)  -  rtn to main menu
+
+Power-on Time Selection
+    1. 1 to 12
+    2. Spin knob to count
+    3. Click selection - new pos = trk pwr time
+    4. Show Apply and Cancel choice
+        a. Apply selection (write eeprom) - rtn to main menu
+        b. Cancel selection (no write)  -  rtn to main menu
+    
+-------------------------------------------------	
+DETAILS OF FUNCTION SETUP
+-------------------------------------------------
+
+readMenuEncoder - need new function to setup limits other than ROTARYMIN/MAX  or modify single function to work with all
+---- pass limits to common function?
+---- pass output number variable to function?
+
+Yard selection limits 1-7
+    1- Bayview
+    2- Cumberland
+    3- Wheeling
+    4- Parkersburg
+    5- Test
+    6- OneFuture
+    7- TwoFuture
+
+----------------------------------------------
+EEPROM.h INFORMTION
+----------------------------------------------
+Use Arduino eeprom.h lib
+EEPROM.write(address, value) to setup for save
+EEPROM.commit() to save values
+
+EEPROM.read(address) to read value
+

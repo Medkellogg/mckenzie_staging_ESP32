@@ -1,0 +1,8 @@
+#include <Fonts/FreeSansBold9pt7b.h>
+
+
+display.setFont(&FreeSansBold9pt7b);
+    display.clearDisplay();
+    bandoText("YARD LEAD",0,12,1,false);
+    bandoText("OCCUPIED",0,36,1,false);
+    bandoText("STOP!",1,60,1,true);
