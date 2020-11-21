@@ -29,7 +29,7 @@
 //      If more time is needed: the current track is displayed on the OLED, 
 //        user may single-click to select again for another 4 minutes 
 //      After the timer expires the system will return to the standby screen
-//      Setup Mode can be entered by holding the click knob for seconds
+//      Setup Mode can be entered by holding the click knob for 6 seconds
 
 
 //----------------------------Track Sensors Descriptions--------------------
@@ -77,9 +77,11 @@
 
 //#define test crntMap
 //#define Parkersburg crntMap
-#define Bayview crntMap
+//#define Bayview crntMap
 //#define Cumberland crntMap
 
+//-----------------------setup read/write to ESP32 flash (EEPROM)----
+#define EEPROM_SIZE 8
 
 //------------Setup sensor debounce from Bounce2 library-----
 const byte mainSensInpin {26};
@@ -120,56 +122,104 @@ const uint16_t	THROWN_S16	{0x8000};	//1000000000000000	32768
 struct turnoutMap {
   uint8_t       numTracks;
   uint8_t       startTrack;
-  byte          defaultTrack;
+  uint8_t       defaultTrack;
   bool          revL;
-  unsigned long trainIOtime;
   char          mapName[16];
   uint16_t      routes[MAX_LADDER_TRACKS];
 };
 
 //----------------------Wheeling Staging Yard-------------------------
-//  All turnouts are RH: the "normal" position selects active track.  
-//  RevLoop power does not cycle off when RevLoop route selected.        
-//         ______W1
-//        /      ______W2
-//       /      /      ______W3
-//      /      /      /      ______W4
-//     /      /      /      /      ______W5
-//    /      /      /      /      /      
-//___T0_____T1_____T2_____T3_____T4___________RevLoop
 
-
-turnoutMap Wheeling = {         // map #1
+turnoutMap Wheeling = {         // map #0
              6,                 // numTracks
              1,                 // startTrack
-             6,                 // defaultTrack
+             1,                 // defaultTrack
              true,              // have reverse track?
-             1000000L * 60 * 1, // delay time in TRACK_ACTIVE
-             "Wheeling",
+             "Wheeling",        // mapName
 /* trk W0   */  0,
-/* trk W1   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
-/* trk W2   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
-/* trk W4   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
+/* trk W1   */  0,
+/* trk W2   */  THROWN_S1,
+/* trk W3   */  THROWN_S1+THROWN_S2,
+/* trk W4   */  THROWN_S1+THROWN_S2+THROWN_S3,
 /* trk W5   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
-/* trk RevL */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
-/* trk A7   */  0, /* not used */
-/* trk W8   */  0, /* not used */ 
-/* trk W9   */  0, /* not used */
-/* trk W10  */  0, /* not used */
-/* trk W11  */  0, /* not used */ 
-/* trk W12  */  0  /* not used */
+/* trk RevL */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4+THROWN_S5, 
 };
 
+
+//--------------------Parkersburg Staging Yard------------------            
+
+
+turnoutMap Parkersburg = {      // Map #1
+             6,                 // numTrack
+             1,                 // startTrack
+             1,                 // default track
+             false,             // have reverse track?
+             "Parkersburg",     // map name
+/* trk P0   */  0,
+/* trk P1   */  0,
+/* trk P2   */  THROWN_S5,
+/* trk P3   */  THROWN_S1,
+/* trk P4   */  THROWN_S1+THROWN_S2,
+/* trk P5   */  THROWN_S1+THROWN_S2+THROWN_S3,
+/* trk P6   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
+};
+
+//--------------------Bayview Staging Yard------------------
+
+turnoutMap Bayview = {          // Map #2
+             12,                // numTracks
+             1,                 // startTrack
+             12,                // default track
+             true,              // have reverse track?
+             "Bayview",         // map name
+/* trk 0    */  0,  /* not used  */
+/* trk B1   */  THROWN_S1+THROWN_S2+THROWN_S3,
+/* trk B2   */  THROWN_S1+THROWN_S2,
+/* trk B3   */  THROWN_S1+THROWN_S5,
+/* trk B4   */  THROWN_S1,
+/* trk B5   */  THROWN_S6+THROWN_S7+THROWN_S8,
+/* trk B6   */  THROWN_S6+THROWN_S7,
+/* trk B7   */  THROWN_S6+THROWN_S9,
+/* trk B8   */  THROWN_S6,
+/* trk B9   */  THROWN_S10+THROWN_S11, 
+/* trk B10  */  THROWN_S10,
+/* trk B11  */  0,  /*  all switches in Normal position  */
+/* trk RevL */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
+};
+
+//----------------------Cumberland Staging Yard-------------------------
+
+turnoutMap Cumberland = {       // Map #3
+             12,                // numTrack - total in yard
+             1,                 // startTrack - start counting at this num
+             12,                // default track - startup track
+             true,              // have reverse track?
+             "Cumberland",      // map name
+/* trk W0   */  0,
+/* trk W1   */  THROWN_S1+THROWN_S10,
+/* trk W2   */  THROWN_S1+THROWN_S11,
+/* trk W3   */  THROWN_S1,
+/* trk W4   */  THROWN_S2+THROWN_S8,
+/* trk W5   */  THROWN_S2+THROWN_S9,
+/* trk C6   */  THROWN_S2,
+/* trk A7   */  THROWN_S3+THROWN_S6,
+/* trk W8   */  THROWN_S3+THROWN_S7, 
+/* trk W9   */  THROWN_S3,
+/* trk W10  */  THROWN_S4+THROWN_S5,
+/* trk W11  */  THROWN_S4, 
+/* trk RevL */  0,
+};
+
+
 /**********************************************************************
-*    THIS "test" PLAN IS USED TO TEST SINGLE TORTOISES.  
+*    Test Yard IS USED TO TEST SINGLE TORTOISES.  
 *    A SINGLE TORTOISE IS SELECTED FOR EACH ROUTE.                         
 **********************************************************************/
-turnoutMap test = {              // Map #2
+turnoutMap Test = {              // Map #4
              17,                 // numTracks
              1,                  // startTrack
              0,                  // default track
              true,               // have reverse track?
-             1000000L * 60 * 1,  // delay time in TRACK_ACTIVE
              "Test",             // map name
 /* trk W0   */  0, /* not used */
 /* SWITCH 1   */  THROWN_S1, 
@@ -190,119 +240,54 @@ turnoutMap test = {              // Map #2
 /* SWITCH 16  */  THROWN_S16,
 };
 
-//--------------------Parkersburg Staging Yard------------------            
-//         
-//       P1  P2  P3  P4  P5  P6
-//      /   /   /   /   /   /
-//     /   /   /   /   /   /
-//    /   /   /   /   /   /
-//   /   /   /   /   /   /  
-//  |   /   /   /  T3___/  
-//  T4_/   /  T2__/    
-//  |     T1__/
-//  |    /     
-//  T0__/  
-//  | 
-//  
-
-turnoutMap Parkersburg = {      // Map #3
-             6,                 // numTrack
-             5,                 // startTrack
-             1,                 // default track
-             false,             // have reverse track?
-             1000000L * 60 * 1, // delay time in TRACK_ACTIVE
-             "Parkersburg",     // map name
-/* trk P0   */  0,
-/* trk P1   */  0,
-/* trk P2   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
-/* trk P3   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
-/* trk P4   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
-/* trk P5   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
-/* trk P6   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
-/* trk P7   */  0, /* not used */
-/* trk P8   */  0, /* not used */ 
-/* trk P9   */  0, /* not used */
-/* trk P10  */  0, /* not used */
-/* trk P11  */  0, /* not used */ 
-/* trk P12  */  0  /* not used */
-};
-
-
-//----------------------Bayview Staging Yard-------------------------
-//  All turnouts are RH: the "normal" position selects active track.  
-//  RevLoop power does not cycle off when RevLoop route selected.        
-//         ______W1
-//        /      ______W2
-//       /      /      ______W3
-//      /      /      /      ______W4
-//     /      /      /      /      ______W5
-//    /      /      /      /      /      
-//___T0_____T1_____T2_____T3_____T4___________RevLoop
-
-turnoutMap Bayview = {          // Map #4
-             12,                // numTracks
+turnoutMap Charleston = {       // map #0
+             6,                 // numTracks
              1,                 // startTrack
-             12,                // default track
+             1,                 // defaultTrack
              true,              // have reverse track?
-             1000000L * 60 * 1, // delay time in TRACK_ACTIVE
-             "Bayview",
-/* trk 0    */  0,  /* not used  */
-/* trk B1   */  THROWN_S1+THROWN_S2+THROWN_S3,
-/* trk B2   */  THROWN_S1+THROWN_S2,
-/* trk B3   */  THROWN_S1+THROWN_S5,
-/* trk B4   */  THROWN_S1,
-/* trk B5   */  THROWN_S6+THROWN_S7+THROWN_S8,
-/* trk B6   */  THROWN_S6+THROWN_S7,
-/* trk B7   */  THROWN_S6+THROWN_S9,
-/* trk B8   */  THROWN_S6,
-/* trk B9   */  THROWN_S10+THROWN_S11, 
-/* trk B10  */  THROWN_S10,
-/* trk B11  */  0,  /*  all switches in Normal position  */
-/* trk RevL */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
-};
-
-//----------------------Cumberland Staging Yard-------------------------
-//  All turnouts are RH: the "normal" position selects active track.  
-//  RevLoop power does not cycle off when RevLoop route selected.        
-//         ______W1
-//        /      ______W2
-//       /      /      ______W3
-//      /      /      /      ______W4
-//     /      /      /      /      ______W5
-//    /      /      /      /      /      
-//___T0_____T1_____T2_____T3_____T4___________RevLoop
-
-turnoutMap Cumberland = {       // Map #5
-             6,                 // numTrack - total in yard
-             5,                 // startTrack - start counting at this num
-             12,                // default track - startup track
-             true,              // have reverse track?
-             1000000L * 60 * 1, // delay time in TRACK_ACTIVE
-             "Cumberland",
+             "Wheeling",        // mapName
 /* trk W0   */  0,
-/* trk W1   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
-/* trk W2   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
-/* trk W3   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
-/* trk W4   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
+/* trk W1   */  0,
+/* trk W2   */  THROWN_S1,
+/* trk W3   */  THROWN_S1+THROWN_S2,
+/* trk W4   */  THROWN_S1+THROWN_S2+THROWN_S3,
 /* trk W5   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
-/* trk RevL */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
-/* trk A7   */  0, /* not used */
-/* trk W8   */  0, /* not used */ 
-/* trk W9   */  0, /* not used */
-/* trk W10  */  0, /* not used */
-/* trk W11  */  0, /* not used */ 
-/* trk W12  */  0  /* not used */
+/* trk RevL */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4+THROWN_S5, 
 };
 
-const turnoutMap *mapData[5] = {
+turnoutMap Curtis_Bay = {       // map #6
+             6,                 // numTracks
+             1,                 // startTrack
+             1,                 // defaultTrack
+             true,              // have reverse track?
+             "Curtis Bay",      // mapName
+/* trk W0   */  0,
+/* trk W1   */  0,
+/* trk W2   */  THROWN_S1,
+/* trk W3   */  THROWN_S1+THROWN_S2,
+/* trk W4   */  THROWN_S1+THROWN_S2+THROWN_S3,
+/* trk W5   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
+/* trk RevL */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4+THROWN_S5, 
+};
+
+
+//--------------Map yard memory addresses with pointer for crntMap----
+const turnoutMap *mapData[7] = {
   &Wheeling,      // #0
-  &test,          // #1
-  &Parkersburg,   // #2
-  &Bayview,       // #3
-  &Cumberland     // #4
+  &Parkersburg,   // #1
+  &Bayview,       // #2
+  &Cumberland,    // #3
+  &Test,          // #4
+  &Charleston,    // #5
+  &Curtis_Bay,    // #6
 };
 
-int crntMap = 1;
+//-----------Global variables for EEPROM to select current map -------
+//-----------and trk pwr delay time-----------------------------------
+byte crntMap = 0;
+byte crntMapChoice = 4;
+byte trackActiveDelay = 0;
+byte trackActiveDelayChoice = 2;
 
 //-----Setup pins for 74HC595 shift register 
 const int latchPin = 33;   
@@ -320,7 +305,10 @@ bcsjTimer  timerTrainIO;
 //---Timer Variables---
 unsigned long interval_OLED    = 1000000L * 60 * 0.5;  //screen timeout for sleep
 unsigned long interval_Tortoise = 1000000L * 3;         //Tortoise run time interval
-unsigned long interval_TrainIO  = mapData[crntMap]->trainIOtime;  //Time before trk power goes off
+
+
+//-------------------------------------delete?---------------
+//unsigned long interval_TrainIO  = mapData[crntMap]->trainIOtime;  //Time before trk power goes off
 
 // Instantiate a Bounce object
 Bounce debouncer1 = Bounce(); Bounce debouncer2 = Bounce(); 
@@ -340,13 +328,13 @@ void oledOn();
 void oledOff();
 void bandoText(String text, int x, int y, int size, boolean d);
 void tracknumChoiceText();
-void tracknumActiveText();  //TODO______may not need----review----
+//void tracknumActiveText();  //TODO______may not need----review----
 void tracknumActChoText();
 
 //---RotaryEncoder DEFINEs for numbers of tracks to access with encoder
 #define ROTARYSTEPS 1
-#define ROTARYMIN   mapData[crntMap]->startTrack
-#define ROTARYMAX   mapData[crntMap]->numTracks
+#define ROTARYMIN  mapData[crntMap]->startTrack
+#define ROTARYMAX  mapData[crntMap]->numTracks
 
 //--- Setup a RotaryEncoder for GPIO pins 16, 17:
 RotaryEncoder encoder(17, 16);
@@ -355,9 +343,9 @@ OneButton     encoderSw1(4, true);      //---Setup  OneButton for rotary
                                          //   encoder sw on pin 13 - active low
 
 //---RotaryEncoder Setup and variables are in this section---------
-byte tracknumChoice  = ROTARYMAX;
-byte tracknumActive  = ROTARYMAX;
-byte tracknumDisplay = ROTARYMAX;
+uint16_t tracknumChoice  = ROTARYMAX;
+uint16_t tracknumActive  = ROTARYMAX;
+//uint16_t tracknumDisplay = ROTARYMAX;
 
 //---Rotary Encoder Switch Variables-------------------------------
 byte knobPosition = ROTARYMAX;
@@ -365,6 +353,7 @@ bool knobToggle   = true;       //active low
 void readEncoder();             //--RotaryEncoder Function------------------
 
 //--OneButton Function delarations for RotaryEncoder switch
+
 void click1();
 void doubleclick1();
 void longPressStart1();
@@ -414,13 +403,19 @@ void setup()
   Serial.begin(115200);
   delay(1000);  //time to bring up serial monitor
   Wire.setClock(1000000L);
-    
+
+  // initialize EEPROM with predefined size
+  EEPROM.begin(EEPROM_SIZE);
+
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x64
       Serial.println(F("SSD1306 allocation failed"));
       for (;;); // Don't proceed, loop forever
     }
 
   display.setFont(&FreeSansBold9pt7b);
+
+  crntMap          = EEPROM.read(0);      //read staging yard map from EEPROM
+  //trackActiveDelay = EEPROM.read(1);      //read trk pwr delay time from EEPROM
     
   //---Setup the sensor pins
   pinMode(mainSensInpin, INPUT_PULLUP); pinMode(mainSensOutpin, INPUT_PULLUP);
@@ -438,6 +433,7 @@ void setup()
   encoderSw1.attachClick(click1);
   encoderSw1.attachDoubleClick(doubleclick1);
   encoderSw1.attachLongPressStart(longPressStart1);
+  
 
   //---Shift register pins
   pinMode(latchPin, OUTPUT);
@@ -445,6 +441,13 @@ void setup()
   pinMode(clockPin, OUTPUT); 
   
   digitalWrite(trackPowerLED_PIN, HIGH);
+
+  
+  writeTrackBits(mapData[crntMap]->routes[mapData[crntMap]->defaultTrack]);
+              
+  tracknumChoice = (mapData[crntMap]->defaultTrack);
+  tracknumActive = (mapData[crntMap]->defaultTrack);
+
   
   display.clearDisplay();
   bandoText("BOOT UP",25,12,1,false);
@@ -453,13 +456,11 @@ void setup()
   bandoText(mapData[crntMap]->mapName,0,60,1,true);
   display.display();
 
-  tracknumChoice = mapData[crntMap]->routes[mapData[crntMap]->defaultTrack];
-  writeTrackBits(mapData[crntMap]->routes[mapData[crntMap]->defaultTrack]);  //align to default track
-  
-  
   delay(5000);
+
   display.clearDisplay();
   digitalWrite(trackPowerLED_PIN, LOW);
+  
 } //-----------------------End setup-----------------------------
 
 //--------------------------------------------------------------//
@@ -467,7 +468,12 @@ void setup()
 //--------------------------------------------------------------//
 
 void loop() 
-{
+{                         //DEBUG__________________________
+                          Serial.print("trackNumChoice(Setup); ");
+                          Serial.println(tracknumChoice);
+                          Serial.print("tracknumActive(setup):    ");
+                          Serial.println(tracknumActive);
+  
   if(railPower == ON)  digitalWrite(trackPowerLED_PIN, HIGH);
   else                 digitalWrite(trackPowerLED_PIN, LOW);
 
@@ -492,7 +498,7 @@ void loop()
                           Serial.print("       rev_lastDirection: ");
                           Serial.println(rev_LastDirection);
                           Serial.print("tracknumActive:    ");
-                          Serial.print(tracknumActive);
+                          Serial.println(tracknumActive);
  //---end debug printing-------------*/
 }     
  //------------------------END main loop-------------------
@@ -610,6 +616,8 @@ void leaveTrack_Setup()
 //-----------------------TRACK_ACTIVE State Function------------------
 void runTRACK_ACTIVE()
 {
+  unsigned long interval_TrainIO  = 1000000L * 30 * trackActiveDelay;  //Time before trk power goes off
+  
   readAllSens();
   display.clearDisplay();
   bandoText(" -PROCEED-",0,12,1,false);
@@ -702,14 +710,14 @@ void readEncoder()
     lastPos = newPos;
     tracknumChoice = newPos;
     //oledOn();
-                        /*Serial.print(newPos);   
+                        Serial.print(newPos);   
                         Serial.println();
                         Serial.print("Choice: ");
                         Serial.println(tracknumChoice);
                         Serial.print("Active: ");
                         Serial.println(tracknumActive);
                         Serial.print("bailOut:   ");
-                        Serial.println(bailOut);  */
+                        Serial.println(bailOut);  
                         //delay(50); 
 
     timerOLED.start(interval_OLED);   //--sleep timer for STAND_BY mode
@@ -732,6 +740,18 @@ void runMENU()
   bandoText("Wrt EEPROM",0,36,1,true);
   delay(3000);
   
+
+  EEPROM.write(0, crntMapChoice);
+  EEPROM.commit();
+  EEPROM.write(1, trackActiveDelayChoice);
+  EEPROM.commit();
+  
+  Serial.print("crntMapChoice:...............");
+  Serial.println(crntMapChoice);
+  Serial.print("trackActiveDelayChoice:...");
+  Serial.println(trackActiveDelayChoice);
+
+
   runHOUSEKEEP();
 }
 
@@ -882,7 +902,7 @@ void tracknumChoiceText()
     else bandoText(choiceBuf,82,36,1,false);
 }
 
-void tracknumActiveText()    //TODO________may not need--review-----
+/*void tracknumActiveText()    //TODO________may not need--review-----
 {
   enum {BufSize=3};  
   char activeBuf[BufSize];
@@ -890,6 +910,7 @@ void tracknumActiveText()    //TODO________may not need--review-----
     if(tracknumActive == ROTARYMAX) bandoText("RevL",78,60,1,false);
     else  bandoText(activeBuf,75,60,1,false);
 }
+*/
 
 void tracknumActChoText()
 {
@@ -946,9 +967,9 @@ void writeTrackBits(uint16_t track)
   shiftOut(dataPin, clockPin, MSBFIRST, (track >> 8));
   shiftOut(dataPin, clockPin, MSBFIRST, track);
   digitalWrite(latchPin, HIGH);
-            //Serial.print("track: ");
-            //Serial.println(track);
-            //Serial.println(track, BIN);
+            Serial.print("trackFunction: ");
+            Serial.println(track);
+            Serial.println(track, BIN);
   
 }  
 
