@@ -61,6 +61,7 @@
 //
 //   Sensor Busy - Sensor reports busy when either sensor of either sensor 
 //   pair is true, and remains so until all return false.
+//      ADDED A BIG LAST LINE TO THE DESCRIPTION FROM THE LAPTOP
 //---------------------------------------------------------------------------
 
 #include <Arduino.h>
@@ -76,6 +77,8 @@
 #include <EEPROM.h>
 
 #define swVer "SW Ver: v1.0"
+
+//This is a change in the code on the laptop
 
 /**********Staging yard "Map to number" Converion Table***************
 *                                                                    *
