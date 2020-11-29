@@ -52,3 +52,8 @@ EEPROM.commit() to save values
 
 EEPROM.read(address) to read value
 
+------------------------------------------------------
+new variables
+global -    byte mapChoice = 5
+            
+#define EEPROM_SIZE 8

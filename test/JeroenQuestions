@@ -1,1 +1,31 @@
-How many yards possible in the future? (for menu system)
+11/19/2020
+
+RAM:   [=         ]   5.2% (used 16988 bytes from 327680 bytes)
+Flash: [==        ]  19.0% (used 249522 bytes from 1310720 bytes)
+esptool.py v2.6
+
+Added EEPROM write read 
+Currently yard choice is commented out, but delay time works okay.
+
+Next step check out yard selection.
+
+Setup Menu
+General Overview -
+Each board will come with the software loaded with route maps for all the staging yards plus a "test" yard mode.  You can set any board for any Staging Yard and also adjust the track power ON timing.  Once you make the changes you need to "reset/reboot" the system for changes to take place.
+
+Enter the "setup" mode - Hold the knob down for 5 seconds
+
+Setup Main Menu Screen: Pick one of the following three choices
+    1. Yard selection - 1 to 7 staging yards
+    2. Time selection - Number of minutes from 0 to 10 for track power on
+    3. Exit Setup
+
+Yard Selection screen - 
+Use the dial to select one of seven staging yards (the 4 existing ones, test mode, future 1, future 2
+     1. Push knob to select the new active yard and return to the main Setup screen
+     2. Cancel and return to the main Setup screen without a new selection
+
+  Track Power On  - 
+  Use the dial to select 0 to 10-minute track power "ON" in 30-second increments    
+      1. Push knob to select the new track power time and return to the main Setup screen
+      2, Cancel and return to the main Setup screen without a new selection
