@@ -28,3 +28,8 @@ by: Mark Kellogg - Began: 4/23/2020
    Train PassBy - which senses the train has passed by the sensor completely in the direction it arrived from.  If a train backs out        without completely passing by PassBy will not report true. It stays active as long as the train is within the sensor pair.
 
    Sensor Busy - Sensor reports busy when either sensor of either sensor pair is true and remains so until all return false.
+
+   Release History
+    11/28/2020 Test Release v1.0 to be installed on layout with two test boards and one Control Panel Box to share between the two.
+    Boards, two each:  Cumberland and Bayview
+    Delivered test system burned with TEST yard.
