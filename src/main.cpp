@@ -68,14 +68,18 @@
 #include <Bounce2.h>
 #include <SPI.h>
 #include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
-#include <Fonts/FreeSansBold9pt7b.h>
 #include "bcsjTimer.h"
 #include <OneButton.h>
 #include <EEPROM.h>
+#include <U8g2lib.h>
 
-#define swVer "SW Ver: v1.0"
+#define swVer "SW Ver: v2.0"
+
+//#define crntMap 4
+//#define trackActiveDelay 1 
+
+//---Constructor for OLED screen
+U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 
 /**********Staging yard "Map to number" Converion Table***************
 *                                                                    *
@@ -103,12 +107,12 @@
 **********************************************************************/
 
 //---------Variables written to EEPROM by "MENU" Function ------------
-byte crntMapChoice = 4;           // SET YARD CHOICE HERE
+byte crntMapChoice = 3;           // SET YARD CHOICE HERE
 byte trackActiveDelayChoice = 1;  // SET TRACK POWER DELAY HERE IN MIN.
 
 //--------Variables set in void.setup() upon reading EEPROM----------
-byte crntMap = 0;
-byte trackActiveDelay = 0;
+byte crntMap = 4;
+byte trackActiveDelay = 1;
 
 //-----------------------setup read/write to ESP32 flash (EEPROM)----
 #define EEPROM_SIZE 8
@@ -325,11 +329,14 @@ void writeTrackBits( uint16_t track);
 bcsjTimer  timerOLED;
 bcsjTimer  timerTortoise;
 bcsjTimer  timerTrainIO;
+bcsjTimer  timerTrackSelect;
 
 //---Timer Variables---
 unsigned long additionalScreenTime  = 1000000L * 60 * 1;    //+ screen timeout for sleep
 unsigned long interval_Tortoise     = 1000000L * 3;         //Tortoise run time interval
 unsigned long interval_OLED         = trackActiveDelay + additionalScreenTime;
+unsigned long interval_TrackSelect  = 1000000L * 5;         //---Display "new track selection for 5 //
+                                                            //seconds before return to Active Track //
 
 
 
@@ -338,21 +345,23 @@ Bounce debouncer1 = Bounce(); Bounce debouncer2 = Bounce();
 Bounce debouncer3 = Bounce(); Bounce debouncer4 = Bounce();
 
 //------------Set up OLED Screen-----
-#define SCREEN_WIDTH 128 
-#define SCREEN_HEIGHT 64 
+//#define SCREEN_WIDTH 128 
+//#define SCREEN_HEIGHT 64 
 
+/*___DISPLAY
 //-------Declaration for an SSD1306 display - using I2C (SDA, SCL pins)
 #define OLED_RESET -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+*/
 
 //---------------------OLED Display Functions------------------//
 byte oledState = true;
-void oledOn();
-void oledOff();
-void bandoText(String text, int x, int y, int size, boolean d);
+void oledOn();   //___CHECK IF NEEDED
+void oledOff();    //___UPDATED FOR DISPLAY
+//void bandoText(String text, int x, int y, int size, boolean d);
 void tracknumChoiceText();
-//void tracknumActiveText();  //TODO______may not need----review----
-void tracknumActChoText();
+void tracknumActiveText();
+void tracknumActChoText();  //DISPLAY______may not need----review----
 
 //---RotaryEncoder DEFINEs for numbers of tracks to access with encoder
 #define ROTARYSTEPS 1
@@ -417,6 +426,8 @@ byte revInValue         = 1,      revIn_LastValue    = 1;
 byte revOutValue        = 1,      revOut_LastValue   = 1;
 byte revDirection       = 0,      rev_LastDirection  = 0;
 
+
+
 //--------------------------------------------------------------//
 //                         void setup()                         //
 //--------------------------------------------------------------//
@@ -426,16 +437,11 @@ void setup()
   Serial.begin(115200);
   delay(1000);  //time to bring up serial monitor
   Wire.setClock(1000000L);
+  u8g2.begin();
 
   // initialize EEPROM with predefined size
   EEPROM.begin(EEPROM_SIZE);
 
-  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x64
-      Serial.println(F("SSD1306 allocation failed"));
-      for (;;); // Don't proceed, loop forever
-    }
-
-  display.setFont(&FreeSansBold9pt7b);
   crntMap          = EEPROM.read(0);      //read staging yard map from EEPROM
   trackActiveDelay = EEPROM.read(1);      //read trk pwr delay time from EEPROM
       
@@ -474,17 +480,14 @@ void setup()
   tracknumChoice = (mapData[crntMap]->defaultTrack);
   tracknumActive = (mapData[crntMap]->defaultTrack);
 
-  
-  display.clearDisplay();
-  bandoText("BOOT UP",25,12,1,false);
-                   //bandoText("JEROEN GERRITSEN'S",8,20,1,true);
-  bandoText(mapData[crntMap]->mapName,0,36,1,true);
-  bandoText(swVer,0,60,1,true);
-  display.display();
+  u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_helvB10_te);
+    u8g2.drawStr(25,12,"BOOT UP");
+    u8g2.drawStr(0,36,mapData[crntMap]->mapName);
+    u8g2.drawStr(0,60,swVer);
+  u8g2.sendBuffer();
 
   delay(5000);
-
-  display.clearDisplay();
   digitalWrite(trackPowerLED_PIN, LOW);
   
 } //-----------------------End setup-----------------------------
@@ -525,6 +528,9 @@ void loop()
                           Serial.println(rev_LastDirection);
                           Serial.print("tracknumActive:    ");
                           Serial.println(tracknumActive);
+                          Serial.print("Mode: ");
+                          Serial.println(mode);
+
  //---end debug printing-------------*/
 }     
  //------------------------END main loop-------------------
@@ -542,8 +548,11 @@ void loop()
 //--------------------HOUSEKEEP Function--------------------------
 void runHOUSEKEEP()
 {
+  /*______DISPLAY
   display.ssd1306_command(0xAF); // turn OLED on
+  */
   oledOn();
+  
                                   Serial.println();
                                   Serial.println("--------------------HOUSEKEEP---");
   
@@ -551,11 +560,14 @@ void runHOUSEKEEP()
   if(railPower == ON)  digitalWrite(trackPowerLED_PIN, HIGH);
   else  digitalWrite(trackPowerLED_PIN, LOW);
     
-  display.clearDisplay();
-  tracknumActChoText();
-  bandoText("   -SELECT-",0,12,1,false);
-  bandoText("TRACK:",0,36,1,false);
-  bandoText("Active:",0,60,1,true);
+  //___DISPLAY   display.clearDisplay();
+  
+  u8g2.clearBuffer();
+  tracknumActiveText();
+  u8g2.setFont(u8g2_font_helvB10_te);     // (u8g2_font_ncenB10_tr);
+  u8g2.drawStr(3,30, "ACTIVE:");          //u8g2.drawStr(3,30,"SELECT?");
+  u8g2.drawStr(3,60,"Rotate to change");  //Serial.println("in do loop");
+  u8g2.sendBuffer();
   
   timerOLED.start(interval_OLED);   /*--start sleep timer here for when HOUSEKEEP 
                                       state is entered after moving through states
@@ -579,7 +591,9 @@ void runSTAND_BY()
     if((mainSens_Report > 0) || (revSens_Report > 0))
     {
                                 Serial.println("---to OCCUPIED from STAND_BY---"); 
-      oledOn();                    
+      //u8g2.sendBuffer();
+      oledOn();    //___DISPLAY
+      u8g2.sendBuffer();                
       runOCCUPIED();
     }
   }
@@ -588,9 +602,14 @@ void runSTAND_BY()
   
   tracknumActive = tracknumChoice;  
   knobToggle = true;                 //--reset so readEncoder will run in stand_by
-  timerOLED.disable();              
+  timerOLED.disable();
+
+  u8g2.sendBuffer();
+
+  
   oledOn();
-  display.display(); 
+  //display.display();
+   
   mode = TRACK_SETUP;                //---move on with new track assignment
 } 
 
@@ -604,11 +623,13 @@ void runTRACK_SETUP()
                             Serial.println("------------------------TRACK_SETUP---");
   writeTrackBits(mapData[crntMap]->routes[tracknumActive]);
 
-  display.clearDisplay();
-  bandoText(" -ALIGNING-",0,12,1,false);
-  bandoText("TRACK:",0,36,1,false);
-  tracknumChoiceText();  
-  bandoText("WAIT!",20,60,1,true);
+  u8g2.clearBuffer();
+  tracknumChoiceText();
+  u8g2.setFont(u8g2_font_helvB10_te);     // (u8g2_font_ncenB10_tr);
+  u8g2.drawStr(3,20, "Align");          //u8g2.drawStr(3,30,"SELECT?");
+  u8g2.drawStr(3,35, "Route");
+  u8g2.drawStr(3,60,"WAIT");  //Serial.println("in do loop");
+  u8g2.sendBuffer();
   
   timerTortoise.start(interval_Tortoise);   //--begin delay for Tortoises
   while(timerTortoise.running() == true)
@@ -645,11 +666,17 @@ void runTRACK_ACTIVE()
   unsigned long interval_TrainIO  = 1000000L * 60 * trackActiveDelay;  //Time before trk power goes off
   
   readAllSens();
-  display.clearDisplay();
-  bandoText(" -PROCEED-",0,12,1,false);
-  bandoText("TRACK:",0,36,1,false);
-  tracknumChoiceText();    
-  bandoText("Trk Pwr: ON",0,60,1,true);
+  
+  
+  
+  u8g2.clearBuffer();
+  tracknumChoiceText();
+  u8g2.setFont(u8g2_font_helvB10_te);     // (u8g2_font_ncenB10_tr);
+  //u8g2.drawStr(3,20, "PROCEED ON");          //u8g2.drawStr(3,30,"SELECT?");
+  u8g2.drawStr(3,35, "Proceed");
+  u8g2.drawStr(3,60,"Track power: ON");  //Serial.println("in do loop");
+  u8g2.sendBuffer();
+  
                             Serial.println("-----------------------TRACK_ACTIVE---");
   rev_LastDirection = 0; //reset for use during the next TRACK_ACTIVE call
   main_LastDirection = 0;
@@ -704,14 +731,19 @@ void leaveTrack_Active()
 void runOCCUPIED()
 {
   Serial.println("OCCUPIED");
-  display.clearDisplay();
+  //__DISPLAY    display.clearDisplay();
   while((mainSens_Report > 0) || (revSens_Report > 0))
   {
     readAllSens();
     Serial.println("----to OCCUPIED from OCCUPIED---");
-    bandoText("YARD LEAD",0,12,1,false);
-    bandoText("OCCUPIED",0,36,1,false);
-    bandoText("STOP!",20,60,1,true);
+
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_helvB10_te);     // (u8g2_font_ncenB10_tr);
+    u8g2.drawStr(3,20, "STOP!");          //u8g2.drawStr(3,30,"SELECT?");
+    u8g2.drawStr(3,35, "TRACK BUSY");
+    u8g2.drawStr(3,60,"Track power: OFF");  //Serial.println("in do loop");
+    u8g2.sendBuffer();
+
   }
                           Serial.println("----Leaving OCCUPIED---");
   runHOUSEKEEP();
@@ -722,8 +754,9 @@ void runOCCUPIED()
 void readEncoder()
 { 
   encoder.tick();
-  // get the choice physical position and calc the logical position
+  
   int newPos = encoder.getPosition() * ROTARYSTEPS;
+
   if (newPos < ROTARYMIN) {
     encoder.setPosition(ROTARYMIN / ROTARYSTEPS);
     newPos = ROTARYMIN;
@@ -735,9 +768,9 @@ void readEncoder()
   if (lastPos != newPos) {
     lastPos = newPos;
     tracknumChoice = newPos;
-    //oledOn();
-                        Serial.print(newPos);   
-                        Serial.println();
+    oledOn();
+                        Serial.print("newPos: ");
+                        Serial.println(newPos);   
                         Serial.print("Choice: ");
                         Serial.println(tracknumChoice);
                         Serial.print("Active: ");
@@ -746,13 +779,16 @@ void readEncoder()
                         Serial.println(bailOut);  
                         //delay(50); 
 
-    timerOLED.start(interval_OLED);   //--sleep timer for STAND_BY mode
-    display.clearDisplay();
-    tracknumActChoText();
-    bandoText("Active:",0,60,1,false);
-    bandoText("-SELECT-",0,12,1,false);
-    bandoText("TRACK:",0,36,1,true);
-    
+    timerOLED.start(interval_OLED);          //--sleep timer for STAND_BY mode
+
+    u8g2.clearBuffer();
+      tracknumChoiceText();
+      u8g2.setFont(u8g2_font_helvB10_te);     // (u8g2_font_ncenB10_tr);
+      u8g2.drawStr(3,20, "New");          //u8g2.drawStr(3,30,"SELECT?");
+      u8g2.drawStr(3,35, "choice:");
+      u8g2.drawStr(3,60,"Click to select");  //Serial.println("in do loop");
+    u8g2.sendBuffer();
+
   }
 } 
 
@@ -761,21 +797,27 @@ void runMENU()
                         Serial.println("------------------------------runMENU---");
 
   oledOn();
-  display.clearDisplay();
-  bandoText("SETUP MENU",0,12,1,false);
-  bandoText("Wrt EEPROM",0,36,1,true);
-  delay(3000);
-  
 
+  u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_helvB10_te);     // (u8g2_font_ncenB10_tr);
+    u8g2.drawStr(3,20, "MENU");          //u8g2.drawStr(3,30,"SELECT?");
+    u8g2.drawStr(3,35, "CHOICES");
+    u8g2.drawStr(3,60,"WRT EEPROM");  //Serial.println("in do loop");
+  u8g2.sendBuffer();
+
+  
   EEPROM.write(0, crntMapChoice);
   EEPROM.commit();
   EEPROM.write(1, trackActiveDelayChoice);
   EEPROM.commit();
   
+  Serial.print("Mode: ");
+  Serial.println(mode);
   Serial.print("crntMapChoice:...............");
   Serial.println(crntMapChoice);
   Serial.print("trackActiveDelayChoice:...");
   Serial.println(trackActiveDelayChoice);
+  delay(5000);
 
 
   runHOUSEKEEP();
@@ -909,57 +951,49 @@ void readRevSens()
 //                          BEGIN HERE                          //
 //--------------------------------------------------------------//
 
-void bandoText(String text, int x, int y, int size, boolean d){
-  display.setTextSize(size);
-  display.setTextColor(WHITE);
-  display.setCursor(x,y);
-  display.println(text);
-  if(d){
-  display.display();
-  }
-}  
-
 void tracknumChoiceText()
 {
+  u8g2.setFont(u8g2_font_fub35_tf);
   enum {BufSize=3};  
+  //char activeBuf[BufSize];
   char choiceBuf[BufSize];
   snprintf (choiceBuf, BufSize, "%2d", tracknumChoice);
-    if((tracknumChoice == ROTARYMAX) && (mapData[crntMap]->revL  == true) ) bandoText("RevL",78,36,1,false);
-    else bandoText(choiceBuf,82,36,1,false);
+    if((tracknumChoice == ROTARYMAX) && (mapData[crntMap]->revL  == true)) u8g2.drawStr(72,40,"RL");  //___DISPLAY /*bandoText("RevL",78,36,1,false*/
+    else u8g2.drawStr(72,40,choiceBuf);   //___DISPLAY /*bandoText(choiceBuf,88,40,2,false)*/
 }
 
-/*void tracknumActiveText()    //TODO________may not need--review-----
+void tracknumActiveText()    //TODO________may not need--review-----
 {
+  u8g2.setFont(u8g2_font_fub35_tf);
   enum {BufSize=3};  
   char activeBuf[BufSize];
   snprintf (activeBuf, BufSize, "%2d", tracknumActive);
-    if(tracknumActive == ROTARYMAX) bandoText("RevL",78,60,1,false);
-    else  bandoText(activeBuf,75,60,1,false);
+  if((tracknumActive == ROTARYMAX) && (mapData[crntMap]->revL  == true)) u8g2.drawStr(72,40,"RL");   //___DISPLAY bandoText("RevL",78,60,1,false
+  else  u8g2.drawStr(72,40,activeBuf ); //___DISPLAY  bandoText(activeBuf,75,60,1,false
 }
-*/
 
 void tracknumActChoText()
 {
+  u8g2.setFont(u8g2_font_fub35_tf);
   enum {BufSize=3};  
-  char activeBuf[BufSize];
+  //char activeBuf[BufSize];
   char choiceBuf[BufSize];
   snprintf (choiceBuf, BufSize, "%2d", tracknumChoice);
-    if((tracknumChoice == ROTARYMAX) && (mapData[crntMap]->revL  == true) ) bandoText("RevL",78,36,1,false);
-    else  bandoText(choiceBuf,88,40,2,false);
-  snprintf (activeBuf, BufSize, "%2d", tracknumActive);
-    if((tracknumActive == ROTARYMAX) && (mapData[crntMap]->revL  == true)) bandoText("RevL",78,60,1,false);
-    else  bandoText(activeBuf,75,60,1,false); 
+    if((tracknumChoice == ROTARYMAX) && (mapData[crntMap]->revL  == true)) u8g2.drawStr(72,40,"RL");  //___DISPLAY /*bandoText("RevL",78,36,1,false*/
+    else u8g2.drawStr(72,40,choiceBuf);   //___DISPLAY /*bandoText(choiceBuf,88,40,2,false)*/
 }  
 
 void oledOn()
  {
-  display.ssd1306_command(0xAF);
+  u8g2.setPowerSave(0);
   oledState = true;
  }
- 
-void oledOff()
+
+
+void oledOff()            //___DISPLAY---Changed for SH1106
  {
-  display.ssd1306_command(0xAE);
+  //display.ssd1306_command(0xAE);
+  u8g2.setPowerSave(1);
   oledState = false;
   }
 
@@ -971,7 +1005,8 @@ void click1(){                //--singleclick: if sleep awaken OLED
   if(oledState == false){       
     timerOLED.start(interval_OLED);
     oledOn();
-    display.display();
+    u8g2.sendBuffer();
+    //display.display();  DISPLAY---
   }
                   
   else knobToggle = false;    //  else set trackChoice and move to setup             
@@ -981,8 +1016,8 @@ void doubleclick1(){          //--doubleclick: reset trainIO timer to 0
     timerTrainIO.disable();
 }
 
-void longPressStart1(){       //--hold for 3 seconds goto Main Setup Menu
-  runMENU();
+void longPressStart1(){       //--hold for 6 seconds goto Main Setup Menu
+    runMENU();
 }
 
 //----------------Shift Register Function--------------//
@@ -996,6 +1031,5 @@ void writeTrackBits(uint16_t track)
             Serial.print("trackFunction: ");
             Serial.println(track);
             Serial.println(track, BIN);
-  
 }  
 
