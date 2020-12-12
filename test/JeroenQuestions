@@ -29,3 +29,9 @@ Use the dial to select one of seven staging yards (the 4 existing ones, test mod
   Use the dial to select 0 to 10-minute track power "ON" in 30-second increments    
       1. Push knob to select the new track power time and return to the main Setup screen
       2, Cancel and return to the main Setup screen without a new selection
+
+      Pseudo code 
+      runMenu
+      menuState true 
+
+      
