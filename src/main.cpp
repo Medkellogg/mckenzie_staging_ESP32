@@ -558,7 +558,7 @@ void runHOUSEKEEP()
   tracknumChoiceText();
   tracknumActiveTextSm();
       u8g2.setFont(u8g2_font_helvB10_te);     
-      u8g2.drawStr(3,18, "ACTIVE"); 
+      u8g2.drawStr(3,18, "NEW"); 
       u8g2.setFont(u8g2_font_helvR08_te); 
       u8g2.drawStr(3,35, "rotate to select");
       u8g2.setFont(u8g2_font_helvB10_te); 
