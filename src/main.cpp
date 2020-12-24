@@ -73,7 +73,7 @@
 #include <EEPROM.h>
 #include <U8g2lib.h>
 
-#define swVer "v2.0"
+#define swVer "v2.1"
 
 //---Constructor for OLED screen
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
@@ -89,23 +89,9 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 *            &Curtis_Bay,  #6                                        *
 *********************************************************************/
 
-                   //--____JEROEN______--//
-/********** Global variables for EEPROM to select ********************
-*           current map and trk pwr delay time                       *
-*                                                                    *
-*           Set "crntMapChoice" to the yard number desired           *
-*                                                                    *
-*           Set "trackActiveDelayChoice" to the number of            * 
-*           minutes desired for Track Power "ON"                     * 
-*                                                                    *
-*           AFTER BURNING THE ESP32, BOOT IT UP AND SELECT           *
-*           "MENU" BY HOLDING KNOB DOWN FOR 6 SECONDS                *
-*                                                                    *
-**********************************************************************/
-
 //---------Variables written to EEPROM by "MENU" Function ------------
-byte crntMapChoice = 3;           // SET YARD CHOICE HERE
-byte trackActiveDelayChoice = 1;  // SET TRACK POWER DELAY HERE IN MIN.
+byte crntMapChoice = 3;           
+byte trackActiveDelayChoice = 1;
 
 //--------Variables set in void.setup() upon reading EEPROM----------
 byte crntMap = 4;
@@ -119,6 +105,7 @@ const byte mainSensInpin {26};
 const byte mainSensOutpin{27};
 const byte revSensInpin  {14};
 const byte revSensOutpin {12};
+
 
 const byte INBOUND   {1};
 const byte OUTBOUND  {2};
@@ -164,7 +151,7 @@ struct turnoutMap {
 turnoutMap Wheeling = {         // map #0
              6,                 // numTracks
              1,                 // startTrack
-             1,                 // defaultTrack
+             6,                 // defaultTrack
              true,              // have reverse track?
              "Wheeling",        // mapName
 /* trk W0   */  0,
@@ -172,8 +159,8 @@ turnoutMap Wheeling = {         // map #0
 /* trk W2   */  THROWN_S1,
 /* trk W3   */  THROWN_S1+THROWN_S2,
 /* trk W4   */  THROWN_S1+THROWN_S2+THROWN_S3,
-/* trk W5   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
-/* trk RevL */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4+THROWN_S5, 
+/* trk W5   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4+THROWN_S5,
+/* trk RevL */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4, 
 };
 
 
@@ -342,9 +329,8 @@ Bounce debouncer3 = Bounce(); Bounce debouncer4 = Bounce();
 
 //---------------------OLED Display Functions------------------//
 byte oledState = true;
-void oledOn();   //___CHECK IF NEEDED
-void oledOff();    //___UPDATED FOR DISPLAY
-//void bandoText(String text, int x, int y, int size, boolean d);
+void oledOn();   
+void oledOff();    
 void tracknumChoiceText();
 void tracknumActiveText();
 void tracknumActiveTextSm();
@@ -387,8 +373,21 @@ void runTRACK_SETUP();
 void runTRACK_ACTIVE();
 void runOCCUPIED();
 void runMENU();
+//void selectYARD();
+//void selectTIME();
 void leaveTrack_Setup();
 void leaveTrack_Active();
+
+//---------------SETUP runMenu STATE Machine and Functions----------------------
+enum{MAINMENU, YARDMENU, DELAYMENU, ACTIONMENU} ;
+void runMAINMENU();
+void runYARDMENU();
+void runDELAYMENU();
+void runACTIONMENU();
+
+
+
+
 
 //---Sensor Function Declarations---------------
 void readMainSens();
@@ -424,13 +423,19 @@ void setup()
   Serial.begin(115200);
   delay(1000);  //time to bring up serial monitor
   Wire.setClock(1000000L);
-  u8g2.begin();
+  u8g2.begin(/*Select=*/ 23, /*Right/Next=*/ 18, /*Left/Prev=*/ 19);
 
-  // initialize EEPROM with predefined size
+  /*---- Setup EEPROM and variables for Menu function------------------*
+  *      crntMap and trackActiveDelay variables dictate which staging  *
+  *      map and time delay are used by this instance.                 *  
+  *      The "choice" variables are set to current values for use with *
+  *      the runMenu to setup a different combinations when needed.    *
+  *********************************************************************/
   EEPROM.begin(EEPROM_SIZE);
-
-  crntMap          = EEPROM.read(0);      //read staging yard map from EEPROM
-  trackActiveDelay = EEPROM.read(1);      //read trk pwr delay time from EEPROM
+  crntMap          = EEPROM.read(0);         //read staging yard map from EEPROM
+  trackActiveDelay = EEPROM.read(1);         //read trk pwr delay time from EEPROM
+  crntMapChoice          = crntMap;          
+  trackActiveDelayChoice = trackActiveDelay; 
       
   //---Setup the sensor pins
   pinMode(mainSensInpin, INPUT_PULLUP); pinMode(mainSensOutpin, INPUT_PULLUP);
@@ -471,9 +476,14 @@ void setup()
 
   u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_helvB08_te);     
-    u8g2.drawStr(30,18, ("STARTING UP!")); 
-    u8g2.drawStr(3,35, "YARD:");
-    u8g2.drawStr(60,35,mapData[crntMap]->mapName);
+    u8g2.drawStr(30,8, ("STARTING UP!")); 
+    u8g2.drawStr(3,25, "YARD:");
+    u8g2.drawStr(60,25,mapData[crntMap]->mapName);
+    u8g2.drawStr(3,43, "DELAY:");
+    enum {BufSize=3};  
+    char choiceBuf[BufSize];
+      snprintf (choiceBuf, BufSize, "%2d", trackActiveDelay);
+    u8g2.drawStr(60,43,choiceBuf);
     u8g2.drawStr(3,64,"SOFTWARE:");
     u8g2.drawStr(80,64,swVer);
     u8g2.drawHLine(0, 45, 128); 
@@ -540,9 +550,6 @@ void loop()
 //--------------------HOUSEKEEP Function--------------------------
 void runHOUSEKEEP()
 {
-  /*______DISPLAY
-  display.ssd1306_command(0xAF); // turn OLED on
-  */
   oledOn();
   
                                   Serial.println();
@@ -552,8 +559,6 @@ void runHOUSEKEEP()
   if(railPower == ON)  digitalWrite(trackPowerLED_PIN, HIGH);
   else  digitalWrite(trackPowerLED_PIN, LOW);
     
-  //___DISPLAY   display.clearDisplay();
-  
   u8g2.clearBuffer();
   tracknumChoiceText();
   tracknumActiveTextSm();
@@ -564,9 +569,8 @@ void runHOUSEKEEP()
       u8g2.setFont(u8g2_font_helvB10_te); 
       u8g2.drawStr(3,64,"ACTIVE");
       u8g2.drawHLine(0, 45, 128);
-      u8g2.sendBuffer(); 
-  //Serial.println("--------sendBuffer ACTIVE");
-  
+  u8g2.sendBuffer(); 
+    
   timerOLED.start(interval_OLED);   /*--start sleep timer here for when HOUSEKEEP 
                                       state is entered after moving through states
                                       and no knob twist.                         */
@@ -603,11 +607,9 @@ void runSTAND_BY()
   timerOLED.disable();
 
   u8g2.sendBuffer();
-
   
   oledOn();
-  //display.display();
-   
+  
   mode = TRACK_SETUP;                //---move on with new track assignment
 } 
 
@@ -723,12 +725,12 @@ void leaveTrack_Active()
 //-------------------------OCCUPIED State Function--------------------
 void runOCCUPIED()
 {
-  Serial.println("OCCUPIED");
-  //__DISPLAY    display.clearDisplay();
+                          Serial.println("OCCUPIED");
+  
   while((mainSens_Report > 0) || (revSens_Report > 0))
   {
     readAllSens();
-    Serial.println("----to OCCUPIED from OCCUPIED---");
+                          Serial.println("----to OCCUPIED from OCCUPIED---");
 
     u8g2.clearBuffer();
       u8g2.setFont(u8g2_font_helvB10_te);     
@@ -773,8 +775,7 @@ void readEncoder()
                         Serial.println(tracknumActive);
                         Serial.print("bailOut:   ");
                         Serial.println(bailOut);  
-                        //delay(50); 
-
+                        
     timerOLED.start(interval_OLED);          //--sleep timer for STAND_BY mode
 
     u8g2.clearBuffer();
@@ -792,36 +793,121 @@ void readEncoder()
   }
 } 
 
-void runMENU()
+void runMENU()  
 {  
-                        Serial.println("------------------------------runMENU---");
-
+                        Serial.println("-----------runMENU---");
+                        Serial.print("--------crntMapChoice: ");
+                        Serial.println(crntMapChoice);
+                        Serial.print("--------trackActiveDelayChoice: ");
+                        Serial.println(trackActiveDelayChoice);
   oledOn();
-
-  u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_helvB10_te); 
-    u8g2.drawStr(3,20, "MENU");
-    u8g2.drawStr(3,35, "CHOICES");
-    u8g2.drawStr(3,60,"WRT EEPROM");
-  u8g2.sendBuffer();
-
-  
-  EEPROM.write(0, crntMapChoice);
-  EEPROM.commit();
-  EEPROM.write(1, trackActiveDelayChoice);
-  EEPROM.commit();
-  
-  Serial.print("Mode: ");
-  Serial.println(mode);
-  Serial.print("crntMapChoice:...............");
-  Serial.println(crntMapChoice);
-  Serial.print("trackActiveDelayChoice:...");
-  Serial.println(trackActiveDelayChoice);
-  delay(5000);
-
-
-  runHOUSEKEEP();
+  runMAINMENU();
 }
+
+
+void runMAINMENU() {
+    int menuSelect = 0;
+    
+    menuSelect = u8g2.userInterfaceSelectionList(
+      "Select Task", 
+      1, 
+      "Yard\n"
+      "Time\n"
+      "Accept & Exit\n"
+      "EXIT"
+      );
+
+    if     (menuSelect == 1) runYARDMENU();  
+    else if(menuSelect == 2) runDELAYMENU();  
+    else if(menuSelect == 3) runACTIONMENU();
+    else if(menuSelect == 4) {
+                      Serial.println("_________Main to HOUSKEEP______");
+                      Serial.print("--------crntMapChoice: ");
+                      Serial.println(crntMapChoice);
+                      Serial.print("--------trackActiveDelayChoice: ");
+                      Serial.println(trackActiveDelayChoice);
+      runHOUSEKEEP();
+    }
+  }
+
+ void runYARDMENU() {
+    int yardSelect = 0;
+      Serial.println("_________runYARDMENU______");
+      Serial.print("--------crntMapChoice: ");
+      Serial.println(crntMapChoice);
+      Serial.print("--------trackActiveDelayChoice: ");
+      Serial.println(trackActiveDelayChoice);
+    yardSelect = u8g2.userInterfaceSelectionList(
+      "Select Yard", 
+      1, 
+      "Wheeling\n"
+      "Parkersburg\n"
+      "Bayview\n"
+      "Cumberland\n"
+      "Test\n"
+      "Charleston\n"
+      "Curtis_Bay\n"
+      "Cancel"
+      );
+
+    if (yardSelect >= 1 && yardSelect < 8) {
+      crntMapChoice = yardSelect - 1;
+      runMAINMENU();
+      
+    }
+    else if (yardSelect == 8) runMAINMENU();
+  }
+
+  void runDELAYMENU() {
+    int delaySelect = 0;
+    delaySelect = u8g2.userInterfaceSelectionList(
+      "Select Delay Min", 
+      1, 
+      "No Delay\n"
+      "1 Minute\n"
+      "2 Minutes\n"
+      "3 Minutes\n"
+      "4 Minutes\n"
+      "5 Minutes\n"
+      "6 Minutes\n"
+      "Cancel"
+      );
+
+    if (delaySelect >= 1 && delaySelect <8) {
+      trackActiveDelayChoice = delaySelect - 1;
+      runMAINMENU();
+      
+    }
+    else if (delaySelect == 8) runMAINMENU();
+  }
+
+
+   void runACTIONMENU() {
+    int actionSelect = 0;
+
+    u8g2.setFont(u8g2_font_6x10_tf);
+    u8g2.setFontRefHeightAll();  	/* this will add some extra space for the text inside the buttons */
+    actionSelect = u8g2.userInterfaceMessage("OK to update inputs", "Cancel to return", "Title3", " Ok \n Cancel ");
+    if (actionSelect == 1) {
+      EEPROM.write(0, crntMapChoice);
+      EEPROM.commit();
+      EEPROM.write(1, trackActiveDelayChoice);
+      EEPROM.commit();
+      
+      Serial.println("_________runACTIONMENU______");
+      Serial.print("--------crntMapChoice: ");
+      Serial.println(crntMapChoice);
+      Serial.print("--------trackActiveDelayChoice: ");
+      Serial.println(trackActiveDelayChoice);
+
+      runHOUSEKEEP();
+    }
+    else if (actionSelect == 2) {
+      crntMapChoice = crntMap;
+      trackActiveDelayChoice = trackActiveDelay;
+      mode = HOUSEKEEP; 
+    }
+  }
 
 //-----------------------UPDATE SENSOR FUNCTIONS-----------------------
 //  All functions in this section update and track sensor information: 
@@ -871,7 +957,8 @@ void readMainSens() {
     //---PassByTotal greater than "6" means train has cleared the sensor 
     //  successfully.  TODO--TODO--TODO  FIX BACKING OUT PROBLEM WHEN STARTING
     //  ENTERING OUTBOUND AND BACKING OUT INBOUND - TURNS OFF TIMER
-    //---------end of note------  
+    //---------end of note------
+
     if(mainSensTotal == 0 && mainPassByTotal >= 6) 
       {
        mainPassByState = true;
@@ -955,14 +1042,13 @@ void tracknumChoiceText()
 {
   u8g2.setFont(u8g2_font_fub35_tf);
   enum {BufSize=3};  
-  //char activeBuf[BufSize];
   char choiceBuf[BufSize];
   snprintf (choiceBuf, BufSize, "%2d", tracknumChoice);
     if((tracknumChoice == ROTARYMAX) && (mapData[crntMap]->revL  == true)) u8g2.drawStr(72,40,"RL");  
     else u8g2.drawStr(72,40,choiceBuf);   
 }
 
-void tracknumActiveText()    //TODO________may not need--review-----
+void tracknumActiveText()    
 {
   u8g2.setFont(u8g2_font_fub35_tf);
   enum {BufSize=3};  
@@ -1009,12 +1095,11 @@ void oledOff()
 //                          BEGIN HERE                            //
 //----------------------------------------------------------------//
 
-void click1(){                //--singleclick: if sleep awaken OLED
-  if(oledState == false){       
+void click1(){                //--singleclick: if sleeping: awaken OLED  
+  if(oledState == false){
     timerOLED.start(interval_OLED);
     oledOn();
     u8g2.sendBuffer();
-    //display.display();  DISPLAY---
   }
   else knobToggle = false;    //  else set trackChoice and move to setup             
 }
@@ -1023,7 +1108,7 @@ void doubleclick1(){          //--doubleclick: reset trainIO timer to 0
     timerTrainIO.disable();
 }
 
-void longPressStart1(){       //--hold for 6 seconds goto Main Setup Menu
+void longPressStart1(){       //--hold for 6 seconds: goto Main Setup Menu
     runMENU();
 }
 
@@ -1039,4 +1124,5 @@ void writeTrackBits(uint16_t track)
             Serial.println(track);
             Serial.println(track, BIN);
 }  
+
 
