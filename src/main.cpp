@@ -233,29 +233,29 @@ turnoutMap Cumberland = {       // Map #3
 *    Test Yard IS USED TO TEST SINGLE TORTOISES.  
 *    A SINGLE TORTOISE IS SELECTED FOR EACH ROUTE.                         
 **********************************************************************/
-turnoutMap Test = {              // Map #4
-             17,                 // numTracks
-             1,                  // startTrack
-             0,                  // default track
-             true,               // have reverse track?
-             "Test",             // map name
-/* trk W0   */  0, /* not used */
-/* SWITCH 1   */  THROWN_S1, 
-/* SWITCH 2   */  THROWN_S2, 
-/* SWITCH 3   */  THROWN_S3, 
-/* SWITCH 4   */  THROWN_S4,  
-/* SWITCH 5   */  THROWN_S5, 
-/* SWITCH 6   */  THROWN_S6, 
-/* SWITCH 7   */  THROWN_S7,
-/* SWITCH 8   */  THROWN_S8,
-/* SWITCH 9   */  THROWN_S9,
-/* SWITCH 10  */  THROWN_S10,
-/* SWITCH 11  */  THROWN_S11, 
-/* SWITCH 12  */  THROWN_S12,
-/* SWITCH 13  */  THROWN_S13,
-/* SWITCH 14  */  THROWN_S14,
-/* SWITCH 15  */  THROWN_S15,
-/* SWITCH 16  */  THROWN_S16,
+turnoutMap Test = {            // Map #4
+             16,               // numTracks
+             0,                // startTrack
+             0,                // default track
+             false,            // have reverse track?
+             "Test",           // map name
+/* trk W0       */  0, 
+/* SWITCH 1     */  THROWN_S1, 
+/* SWITCH 2     */  THROWN_S2, 
+/* SWITCH 3     */  THROWN_S3, 
+/* SWITCH 4     */  THROWN_S4,  
+/* SWITCH 5     */  THROWN_S5, 
+/* SWITCH 6     */  THROWN_S6, 
+/* SWITCH 7     */  THROWN_S7,
+/* SWITCH 8     */  THROWN_S8,
+/* SWITCH 9     */  THROWN_S9,
+/* SWITCH 10    */  THROWN_S10,
+/* SWITCH 11    */  THROWN_S11, 
+/* SWITCH 12    */  THROWN_S12,
+/* SWITCH 13    */  THROWN_S13,
+/* SWITCH 14    */  THROWN_S14,
+/* SWITCH 15    */  THROWN_S15,
+/* SWITCH 16    */  THROWN_S16,
 };
 
 turnoutMap Charleston = {       // map #0
@@ -378,16 +378,11 @@ void runMENU();
 void leaveTrack_Setup();
 void leaveTrack_Active();
 
-//---------------SETUP runMenu STATE Machine and Functions----------------------
-enum{MAINMENU, YARDMENU, DELAYMENU, ACTIONMENU} ;
+//---runMenu Functions Declarations--------------
 void runMAINMENU();
 void runYARDMENU();
 void runDELAYMENU();
 void runACTIONMENU();
-
-
-
-
 
 //---Sensor Function Declarations---------------
 void readMainSens();
@@ -427,7 +422,7 @@ void setup()
 
   /*---- Setup EEPROM and variables for Menu function------------------*
   *      crntMap and trackActiveDelay variables dictate which staging  *
-  *      map and time delay are used by this instance.                 *  
+  *      map and time delay are used by this board.                    *  
   *      The "choice" variables are set to current values for use with *
   *      the runMenu to setup a different combinations when needed.    *
   *********************************************************************/
@@ -447,8 +442,10 @@ void setup()
   debouncer1.interval(5);           debouncer2.interval(5); // interval in ms
   debouncer3.interval(5);           debouncer4.interval(5); 
 
-  pinMode(trackPowerLED_PIN, OUTPUT); // for relay in final version
+  //---set pin for driving track power relay 
+  pinMode(trackPowerLED_PIN, OUTPUT); 
 
+  //---set up click routines for the encoder switch
   encoder.setPosition(ROTARYMAX / ROTARYSTEPS); // start with ROTARYMAX value
   encoderSw1.attachClick(click1);
   encoderSw1.attachDoubleClick(doubleclick1);
@@ -457,23 +454,21 @@ void setup()
                                                //    Used to call menu function by
                                                //    holding the encoder switch down
 
-  
-
   //---Shift register pins
   pinMode(latchPin, OUTPUT);
   pinMode(dataPin,  OUTPUT);  
   pinMode(clockPin, OUTPUT); 
   
-  digitalWrite(trackPowerLED_PIN, HIGH);
 
-  
+  //---setup variables for start sequence
   writeTrackBits(mapData[crntMap]->routes[mapData[crntMap]->defaultTrack]);
+  digitalWrite(trackPowerLED_PIN, HIGH);
               
   tracknumChoice = (mapData[crntMap]->defaultTrack);
   tracknumActive = (mapData[crntMap]->defaultTrack);
-  lastPos = (mapData[crntMap]->defaultTrack);
+  lastPos        = (mapData[crntMap]->defaultTrack);
   
-
+  //---display settings for this board during boot sequence
   u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_helvB08_te);     
     u8g2.drawStr(30,8, ("STARTING UP!")); 
@@ -500,9 +495,10 @@ void setup()
 
 void loop() 
 {                         //DEBUG__________________________
-                          Serial.print("trackNumChoice(Setup); ");
+                          Serial.println("---------------------void Loop-----");
+                          Serial.print("trackNumChoice(void loop ent):    ");
                           Serial.println(tracknumChoice);
-                          Serial.print("tracknumActive(setup):    ");
+                          Serial.print("tracknumActive(void loop ent):    ");
                           Serial.println(tracknumActive);
   
   if(railPower == ON)  digitalWrite(trackPowerLED_PIN, HIGH);
@@ -516,21 +512,21 @@ void loop()
   else if (mode ==         MENU) {runMENU();}
   
   /*----debug terminal print----------------*/
-                          Serial.print("mainSensTotal:      ");
-                          Serial.print(mainSensTotal);
-                          Serial.print("           revSensTotal:  ");
-                          Serial.println(revSensTotal);
-                          Serial.print("mainPassByState:    ");
-                          Serial.print(mainPassByState);
-                          Serial.print("          revPassByState: ");
-                          Serial.println(revPassByState); 
-                          Serial.print("main_LastDirection: ");
-                          Serial.print(main_LastDirection);
-                          Serial.print("       rev_lastDirection: ");
-                          Serial.println(rev_LastDirection);
-                          Serial.print("tracknumActive:    ");
+                          //Serial.print("mainSensTotal:      ");
+                          //Serial.print(mainSensTotal);
+                          //Serial.print("           revSensTotal:  ");
+                          //Serial.println(revSensTotal);
+                          //Serial.print("mainPassByState:    ");
+                          //Serial.print(mainPassByState);
+                          //Serial.print("          revPassByState: ");
+                          //Serial.println(revPassByState); 
+                          //Serial.print("main_LastDirection: ");
+                          //Serial.print(main_LastDirection);
+                          //Serial.print("       rev_lastDirection: ");
+                          //Serial.println(rev_LastDirection);
+                          Serial.print("tracknumActive(vloop exit):    ");
                           Serial.println(tracknumActive);
-                          Serial.print("Mode: ");
+                          Serial.print("Mode(vloop exit):  ");
                           Serial.println(mode);
 
  //---end debug printing-------------*/
@@ -581,7 +577,8 @@ void runHOUSEKEEP()
 void runSTAND_BY()
 {
                                  Serial.println("-----------------------STAND_BY---");
-    //---Begin main do-while loop checking for user input--------
+
+//---Begin main do-while loop checking for user input--------
   do
   {    
     if(timerOLED.done() == true){     //---check screen timer and put in
@@ -593,8 +590,7 @@ void runSTAND_BY()
     if((mainSens_Report > 0) || (revSens_Report > 0))
     {
                                 Serial.println("---to OCCUPIED from STAND_BY---"); 
-      //u8g2.sendBuffer();
-      oledOn();    //___DISPLAY
+      oledOn();    
       u8g2.sendBuffer();                
       runOCCUPIED();
     }
@@ -753,6 +749,12 @@ void readEncoder()
 { 
   encoder.tick();
   int newPos = encoder.getPosition() * ROTARYSTEPS;
+                        Serial.println("-------ENCODER");
+                        Serial.print("lastPos: ");
+                        Serial.println(lastPos);   
+                        Serial.print("newPos: ");
+                        Serial.println(newPos);
+                        delay(2000);   
       
   if (newPos < ROTARYMIN) {
     encoder.setPosition(ROTARYMIN / ROTARYSTEPS);
@@ -767,6 +769,7 @@ void readEncoder()
     tracknumChoice = newPos;
     
     oledOn();
+                        Serial.println("-------ENCODER");
                         Serial.print("newPos: ");
                         Serial.println(newPos);   
                         Serial.print("Choice: ");
@@ -775,6 +778,7 @@ void readEncoder()
                         Serial.println(tracknumActive);
                         Serial.print("bailOut:   ");
                         Serial.println(bailOut);  
+                        Serial.println("leave ENCODER");  
                         
     timerOLED.start(interval_OLED);          //--sleep timer for STAND_BY mode
 
