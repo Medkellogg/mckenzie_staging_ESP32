@@ -23,14 +23,19 @@
 //      Single click to wake up screen. 
 //      Select track choice with knob
 //      Single click knob to align track: track power off and route aligns 
-//      Alingnment completes: Track power on, 4 minute timer on
-//      After 4 minutes or outbound train clears throat: track power off
+//      Alingnment completes: Track power on, "n" minute timer on
+//      After "n" minutes or outbound train clears throat: track power off
 //      Double-click to stop timer and return to standby
 //      If more time is needed: the current track is displayed on the OLED, 
-//        user may single-click to select again for another 4 minutes 
+//        user may single-click to select again for another "n" minutes 
 //      After the timer expires the system will return to the standby screen
 //      Setup Mode can be entered by holding the click knob for 6 seconds
 
+//    *Setup Mode:  Plug in the 3 button select board to the I/O  18, 19, 23, and
+//     the administrator can select the staging yard and delay time to be used
+//     by the board.  Once selections have been made the system needs to be
+//     rebooted to enable the new choices to be written, during setup, from the 
+//     EEPROM.
 
 //----------------------------Track Sensors Descriptions--------------------
 // All four staging yards have a single yard lead, from which all 
@@ -79,7 +84,6 @@
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 
 /**********Staging yard "Map to number" Converion Table***************
-*                                                                    *
 *            &Wheeling,    #0                                        *
 *            &Parkersburg, #1                                        *
 *            &Bayview,     #2                                        *
@@ -258,12 +262,12 @@ turnoutMap Test = {            // Map #4
 /* SWITCH 16    */  THROWN_S16,
 };
 
-turnoutMap Charleston = {       // map #0
+turnoutMap Charleston = {       // map #5
              6,                 // numTracks
              1,                 // startTrack
              1,                 // defaultTrack
              true,              // have reverse track?
-             "Wheeling",        // mapName
+             "Charleston",        // mapName
 /* trk W0   */  0,
 /* trk W1   */  0,
 /* trk W2   */  THROWN_S1,
@@ -494,12 +498,12 @@ void setup()
 //--------------------------------------------------------------//
 
 void loop() 
-{                         //DEBUG__________________________
+{                         /*DEBUG__________________________
                           Serial.println("---------------------void Loop-----");
                           Serial.print("trackNumChoice(void loop ent):    ");
                           Serial.println(tracknumChoice);
                           Serial.print("tracknumActive(void loop ent):    ");
-                          Serial.println(tracknumActive);
+                          Serial.println(tracknumActive); */
   
   if(railPower == ON)  digitalWrite(trackPowerLED_PIN, HIGH);
   else                 digitalWrite(trackPowerLED_PIN, LOW);
@@ -524,12 +528,12 @@ void loop()
                           //Serial.print(main_LastDirection);
                           //Serial.print("       rev_lastDirection: ");
                           //Serial.println(rev_LastDirection);
-                          Serial.print("tracknumActive(vloop exit):    ");
-                          Serial.println(tracknumActive);
-                          Serial.print("Mode(vloop exit):  ");
-                          Serial.println(mode);
+                          //Serial.print("tracknumActive(vloop exit):    ");
+                          //Serial.println(tracknumActive);
+                          //Serial.print("Mode(vloop exit):  ");
+                          //Serial.println(mode);
 
- //---end debug printing-------------*/
+ //---end debug printing-------------
 }     
  //------------------------END main loop-------------------
  
@@ -547,9 +551,9 @@ void loop()
 void runHOUSEKEEP()
 {
   oledOn();
-  
+                                  /*---DEBUG
                                   Serial.println();
-                                  Serial.println("--------------------HOUSEKEEP---");
+                                  Serial.println("--------------------HOUSEKEEP---"); */
   
   if((tracknumActive < ROTARYMAX) || (mapData[crntMap]->revL == false)) railPower = OFF;
   if(railPower == ON)  digitalWrite(trackPowerLED_PIN, HIGH);
@@ -576,7 +580,10 @@ void runHOUSEKEEP()
 //-----------------------STAND_BY Function-----------------
 void runSTAND_BY()
 {
-                                 Serial.println("-----------------------STAND_BY---");
+                    /*---DEBUG  
+                    Serial.println("-----------------------STAND_BY---");
+                    Serial.print("------standBy Last Position:  ");
+                    Serial.println(lastPos);  */
 
 //---Begin main do-while loop checking for user input--------
   do
@@ -584,12 +591,14 @@ void runSTAND_BY()
     if(timerOLED.done() == true){     //---check screen timer and put in
       oledOff();                      //   sleep mode if time out
     }
+
     readEncoder();
     readAllSens();
     encoderSw1.tick();  //check for clicks
     if((mainSens_Report > 0) || (revSens_Report > 0))
     {
-                                Serial.println("---to OCCUPIED from STAND_BY---"); 
+                                
+                    //--DEBUG: Serial.println("---to OCCUPIED from STAND_BY---");
       oledOn();    
       u8g2.sendBuffer();                
       runOCCUPIED();
@@ -616,7 +625,7 @@ void runTRACK_SETUP()
   railPower = OFF;
   if(railPower == ON)  digitalWrite(trackPowerLED_PIN, HIGH);
   else  digitalWrite(trackPowerLED_PIN, LOW);
-                            Serial.println("------------------------TRACK_SETUP---");
+                            //--DEBUG: Serial.println("------------------------TRACK_SETUP---");
   writeTrackBits(mapData[crntMap]->routes[tracknumActive]);
 
   u8g2.clearBuffer();
@@ -643,16 +652,16 @@ void runTRACK_SETUP()
 
 void leaveTrack_Setup()
 {
-                            Serial.println("---Entering leaveTrack_Setup---");
+                          //--DEBUG: Serial.println("---Entering leaveTrack_Setup---");
   readAllSens();
   if((mainSens_Report > 0) || (revSens_Report > 0))
   {
-                            Serial.println("---to OCCUPIED from leaveTrack_Setup---");
+                          //--DEBUG: Serial.println("---to OCCUPIED from leaveTrack_Setup---");
     mode = OCCUPIED;
   }
   else 
   {
-                            Serial.println("--times up--leaving TrackSetup--");
+                          //--DEBUG: Serial.println("--times up--leaving TrackSetup--");
     mode = TRACK_ACTIVE;
   }
 }
@@ -660,7 +669,8 @@ void leaveTrack_Setup()
 //-----------------------TRACK_ACTIVE State Function------------------
 void runTRACK_ACTIVE()
 {
-  unsigned long interval_TrainIO  = 1000000L * 60 * trackActiveDelay;  //Time before trk power goes off
+    //---begin timere to keep track power on for "n" minutes
+  unsigned long interval_TrainIO  = 1000000L * 60 * trackActiveDelay;  
   
   readAllSens();
     
@@ -674,7 +684,7 @@ void runTRACK_ACTIVE()
     u8g2.drawHLine(0, 45, 128);  
   u8g2.sendBuffer();
   
-                            Serial.println("-----------------------TRACK_ACTIVE---");
+                    //--DEBUG: Serial.println("-----------------------TRACK_ACTIVE---");
   rev_LastDirection = 0; //reset for use during the next TRACK_ACTIVE call
   main_LastDirection = 0;
   timerTrainIO.start(interval_TrainIO);
@@ -708,12 +718,12 @@ void leaveTrack_Active()
   readAllSens();
   if((mainSens_Report > 0) || (revSens_Report > 0))
   {
-                            Serial.println("--to OCCUPIED from leavTrack_Active-");
+                    //--DEBUG: Serial.println("--to OCCUPIED from leavTrack_Active-");
     mode = OCCUPIED;
   }
   else 
   {
-                            Serial.println("--times up leaving TrackActive--");
+                    //--DEBUG: Serial.println("--times up leaving TrackActive--");
     mode = HOUSEKEEP;
   }
 }
@@ -721,12 +731,12 @@ void leaveTrack_Active()
 //-------------------------OCCUPIED State Function--------------------
 void runOCCUPIED()
 {
-                          Serial.println("OCCUPIED");
+                   //--DEBUG: Serial.println("OCCUPIED");
   
   while((mainSens_Report > 0) || (revSens_Report > 0))
   {
     readAllSens();
-                          Serial.println("----to OCCUPIED from OCCUPIED---");
+                    //--DEBUG: Serial.println("----to OCCUPIED from OCCUPIED---");
 
     u8g2.clearBuffer();
       u8g2.setFont(u8g2_font_helvB10_te);     
@@ -739,7 +749,7 @@ void runOCCUPIED()
       u8g2.drawHLine(0, 45, 128); 
     u8g2.sendBuffer();
   }
-                          Serial.println("----Leaving OCCUPIED---");
+                    //--DEBUG: Serial.println("----Leaving OCCUPIED---");
   runHOUSEKEEP();
 }
 
@@ -749,13 +759,13 @@ void readEncoder()
 { 
   encoder.tick();
   int newPos = encoder.getPosition() * ROTARYSTEPS;
-                        Serial.println("-------ENCODER");
-                        Serial.print("lastPos: ");
-                        Serial.println(lastPos);   
-                        Serial.print("newPos: ");
-                        Serial.println(newPos);
-                        delay(2000);   
-      
+                    /*---DEBUG
+                    Serial.println("-------ENCODER");
+                    Serial.print("lastPos: ");
+                    Serial.println(lastPos);   
+                    Serial.print("newPos: ");
+                    Serial.println(newPos);  */
+                           
   if (newPos < ROTARYMIN) {
     encoder.setPosition(ROTARYMIN / ROTARYSTEPS);
     newPos = ROTARYMIN;
@@ -769,16 +779,17 @@ void readEncoder()
     tracknumChoice = newPos;
     
     oledOn();
-                        Serial.println("-------ENCODER");
-                        Serial.print("newPos: ");
-                        Serial.println(newPos);   
-                        Serial.print("Choice: ");
-                        Serial.println(tracknumChoice);
-                        Serial.print("Active: ");
-                        Serial.println(tracknumActive);
-                        Serial.print("bailOut:   ");
-                        Serial.println(bailOut);  
-                        Serial.println("leave ENCODER");  
+                    /*---DEBUG
+                    Serial.println("-------ENCODER");
+                    Serial.print("newPos: ");
+                    Serial.println(newPos);   
+                    Serial.print("Choice: ");
+                    Serial.println(tracknumChoice);
+                    Serial.print("Active: ");
+                    Serial.println(tracknumActive);
+                    Serial.print("bailOut:   ");
+                    Serial.println(bailOut);  
+                    Serial.println("leave ENCODER"); */ 
                         
     timerOLED.start(interval_OLED);          //--sleep timer for STAND_BY mode
 
@@ -797,17 +808,15 @@ void readEncoder()
   }
 } 
 
+/****************runMENU functions note******************************
+*   See the notes in the main code explanation above.               *
+*********************************************************************/
+
 void runMENU()  
-{  
-                        Serial.println("-----------runMENU---");
-                        Serial.print("--------crntMapChoice: ");
-                        Serial.println(crntMapChoice);
-                        Serial.print("--------trackActiveDelayChoice: ");
-                        Serial.println(trackActiveDelayChoice);
+{
   oledOn();
   runMAINMENU();
 }
-
 
 void runMAINMENU() {
     int menuSelect = 0;
@@ -823,24 +832,23 @@ void runMAINMENU() {
 
     if     (menuSelect == 1) runYARDMENU();  
     else if(menuSelect == 2) runDELAYMENU();  
-    else if(menuSelect == 3) runACTIONMENU();
+    else if(menuSelect == 3) {
+      EEPROM.write(0, crntMapChoice);         //---Write new yard selection to eeprom
+      EEPROM.commit();
+      EEPROM.write(1, trackActiveDelayChoice);//---Write new delay time
+      EEPROM.commit();
+      runHOUSEKEEP();
+    }  
     else if(menuSelect == 4) {
-                      Serial.println("_________Main to HOUSKEEP______");
-                      Serial.print("--------crntMapChoice: ");
-                      Serial.println(crntMapChoice);
-                      Serial.print("--------trackActiveDelayChoice: ");
-                      Serial.println(trackActiveDelayChoice);
+      crntMapChoice = crntMap;
+      trackActiveDelayChoice = trackActiveDelay;
       runHOUSEKEEP();
     }
   }
 
- void runYARDMENU() {
+ void runYARDMENU() {          //---select the yard for this board
     int yardSelect = 0;
-      Serial.println("_________runYARDMENU______");
-      Serial.print("--------crntMapChoice: ");
-      Serial.println(crntMapChoice);
-      Serial.print("--------trackActiveDelayChoice: ");
-      Serial.println(trackActiveDelayChoice);
+    
     yardSelect = u8g2.userInterfaceSelectionList(
       "Select Yard", 
       1, 
@@ -862,7 +870,7 @@ void runMAINMENU() {
     else if (yardSelect == 8) runMAINMENU();
   }
 
-  void runDELAYMENU() {
+  void runDELAYMENU() {       //---select the delay time for this board
     int delaySelect = 0;
     delaySelect = u8g2.userInterfaceSelectionList(
       "Select Delay Min", 
@@ -877,47 +885,21 @@ void runMAINMENU() {
       "Cancel"
       );
 
-    if (delaySelect >= 1 && delaySelect <8) {
+    if (delaySelect >= 1 && delaySelect <8) {   
       trackActiveDelayChoice = delaySelect - 1;
       runMAINMENU();
       
     }
-    else if (delaySelect == 8) runMAINMENU();
+    else if (delaySelect == 8) runMAINMENU();  //---if choice is cancel: bail
   }
+//-----END runMENU FUNCTIONS------------------------------------------
 
 
-   void runACTIONMENU() {
-    int actionSelect = 0;
-
-    u8g2.setFont(u8g2_font_6x10_tf);
-    u8g2.setFontRefHeightAll();  	/* this will add some extra space for the text inside the buttons */
-    actionSelect = u8g2.userInterfaceMessage("OK to update inputs", "Cancel to return", "Title3", " Ok \n Cancel ");
-    if (actionSelect == 1) {
-      EEPROM.write(0, crntMapChoice);
-      EEPROM.commit();
-      EEPROM.write(1, trackActiveDelayChoice);
-      EEPROM.commit();
-      
-      Serial.println("_________runACTIONMENU______");
-      Serial.print("--------crntMapChoice: ");
-      Serial.println(crntMapChoice);
-      Serial.print("--------trackActiveDelayChoice: ");
-      Serial.println(trackActiveDelayChoice);
-
-      runHOUSEKEEP();
-    }
-    else if (actionSelect == 2) {
-      crntMapChoice = crntMap;
-      trackActiveDelayChoice = trackActiveDelay;
-      mode = HOUSEKEEP; 
-    }
-  }
-
-//-----------------------UPDATE SENSOR FUNCTIONS-----------------------
-//  All functions in this section update and track sensor information: 
-//  Busy, Direction, PassBy.  Only the mainOut sensor is documented.  
-//  The remaining three work identically.
-//------------------------------end of note----------------------------
+/***********************UPDATE SENSOR FUNCTIONS*************************
+*   All functions in this section update and track sensor information: * 
+*   Busy, Direction, PassBy.  Only the mainOut sensor is documented.   *  
+*   The remaining three work identically.                              *
+********************************end of note****************************/
 
 void readAllSens() 
   {
@@ -1064,7 +1046,7 @@ void tracknumActiveText()
 
 void tracknumActiveTextSm()    //---Small text, used in the bottom line of the OLED
 {
-  u8g2.setFont(u8g2_font_helvB10_te);
+  u8g2.setFont(u8g2_font_helvB12_te);
   enum {BufSize=3};  
   char activeBuf[BufSize];
   snprintf (activeBuf, BufSize, "%2d", tracknumActive);
@@ -1124,9 +1106,10 @@ void writeTrackBits(uint16_t track)
   shiftOut(dataPin, clockPin, MSBFIRST, (track >> 8));
   shiftOut(dataPin, clockPin, MSBFIRST, track);
   digitalWrite(latchPin, HIGH);
+            /*/--DEBUG: 
             Serial.print("trackFunction: ");
             Serial.println(track);
-            Serial.println(track, BIN);
+            Serial.println(track, BIN);  */
 }  
 
 
