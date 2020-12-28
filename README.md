@@ -1,16 +1,16 @@
 # mckenzie_staging_ESP32
-Jeroen Garritsen's B&O McKenzie Division - Staging Yard Project
+Jeroen Gerritsen's B&O McKenzie Division - Staging Yard Project
 by: Mark Kellogg - Began: 4/23/2020
 
 
- Designed for use on Jeroen Gerrisen's B&O McKenzie Div layout. A main control panel uses an ESP32 to set up active staging yard tracks with a second ESP32 and H-bridge chips to drive the Tortoise switch machines, control track power, etc. The project requires remote control panels, so the second ESP32 is used to eliminate long multiple cable runs to the control panels.
+ Designed for use on Jeroen Gerritsen's B&O McKenzie Div layout. A main control panel uses an ESP32 to set up active staging yard tracks using H-bridge drivers for the Tortoise stall motor switch machines, control track power, etc. The project requires remote control panels and uses I2C extenders for up to 20 foot cable runs.
  
 
- Panel
+ Panel - OlED 1.3" screen, rotary encoder with switch, and a reset switch
 
- Track power timer
+ Track power timer - Track power is turned off after trains either clear the yard or park
 
- Entrance and Exit sensors - 
+ Entrance and Exit sensors - Control signals and access to the yard leads
 
 ----------------------------Track Sensors Descriptions--------------------
  All four staging yards have a single yard lead, from which all the dead end staging tracks fan out.  The yard lead of three of the four yards continue on to a reverse loop.

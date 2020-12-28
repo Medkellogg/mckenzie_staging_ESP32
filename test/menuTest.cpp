@@ -1,3 +1,9 @@
+    
+    bool menuActive = 0;
+
+    
+    
+    
     enum {HOUSEKEEP, STAND_BY, TRACK_SETUP, TRACK_ACTIVE, OCCUPIED, MENU, YARD_SEL, TRKPWR_SEL} mode;
     void runHOUSEKEEP();
     void runSTAND_BY();
