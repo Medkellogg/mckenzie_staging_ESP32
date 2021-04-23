@@ -79,7 +79,7 @@
 #include <EEPROM.h>
 #include <U8g2lib.h>
 
-#define swVer "v2.1"
+#define swVer "v2.2"
 
 //---Constructor for OLED screen
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
@@ -87,10 +87,10 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 //This is a change in the code on the laptop
 
 /**********Staging yard "Map to number" Converion Table***************
-*            &Wheeling,    #0                                        *
+*             &Wheeling,    #0                                        *
 *            &Parkersburg, #1                                        *
 *            &Bayview,     #2                                        *
-*            &Cumberland,  #3                                        *
+*            &Cumberland,  #3                                       *
 *            &Test,        #4                                        *
 *            &Charleston,  #5                                        *
 *            &Curtis_Bay,  #6                                        *
@@ -425,7 +425,7 @@ void setup()
   Serial.begin(115200);
   delay(1000);  //time to bring up serial monitor
   Wire.setClock(1000000L);
-  u8g2.begin(/*Select=*/ 23, /*Right/Next=*/ 18, /*Left/Prev=*/ 19);
+  u8g2.begin(/*Select=*/ 19, /*Right/Next=*/ 18, /*Left/Prev=*/ 23);
 
   /*---- Setup EEPROM and variables for Menu function------------------*
   *      crntMap and trackActiveDelay variables dictate which staging  *
