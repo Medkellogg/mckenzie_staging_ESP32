@@ -79,7 +79,7 @@
 #include <EEPROM.h>
 #include <U8g2lib.h>
 
-#define swVer "v2.2"
+#define swVer "v2.35"
 
 //---Constructor for OLED screen
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
@@ -281,18 +281,17 @@ turnoutMap Charleston = {       // map #5
 };
 
 turnoutMap Curtis_Bay = {       // map #6
-             6,                 // numTracks
+             5,                 // numTracks
              1,                 // startTrack
              1,                 // defaultTrack
-             true,              // have reverse track?
+             false,              // have reverse track?
              "Curtis Bay",      // mapName
 /* trk W0   */  0,
-/* trk W1   */  0,
-/* trk W2   */  THROWN_S1,
-/* trk W3   */  THROWN_S1+THROWN_S2,
-/* trk W4   */  THROWN_S1+THROWN_S2+THROWN_S3,
-/* trk W5   */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4,
-/* trk RevL */  THROWN_S1+THROWN_S2+THROWN_S3+THROWN_S4+THROWN_S5, 
+/* trk W1   */  THROWN_S1,
+/* trk W2   */  0,
+/* trk W3   */  THROWN_S4,
+/* trk W4   */  THROWN_S3,
+/* trk W5   */  THROWN_S2,
 };
 
 
