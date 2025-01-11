@@ -79,7 +79,7 @@
 #include <EEPROM.h>
 #include <U8g2lib.h>
 
-#define swVer "v2.35"
+#define swVer "v2.5 - (1/11/2025)"
 
 //---Constructor for OLED screen
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
@@ -507,8 +507,8 @@ void setup()
     char choiceBuf[BufSize];
       snprintf (choiceBuf, BufSize, "%2d", trackActiveDelay);
     u8g2.drawStr(60,43,choiceBuf);
-    u8g2.drawStr(3,64,"SOFTWARE:");
-    u8g2.drawStr(80,64,swVer);
+    u8g2.drawStr(3,64,"S/W:");
+    u8g2.drawStr(35,64,swVer);
     u8g2.drawHLine(0, 45, 128); 
    u8g2.sendBuffer();
 
@@ -585,7 +585,7 @@ void runHOUSEKEEP()
     
   u8g2.clearBuffer();
   tracknumChoiceText();
-  //tracknumActiveTextSm();  commented out 1/10/2024
+  
       u8g2.setFont(u8g2_font_helvB10_te);     
       u8g2.drawStr(3,18, "ROTATE"); 
       //u8g2.setFont(u8g2_font_helvR08_te);   commented out 1/10/2025
@@ -593,8 +593,7 @@ void runHOUSEKEEP()
       u8g2.setFont(u8g2_font_helvB10_te);
       if (railPower == ON) {u8g2.drawStr(3,64,"TRK POWER ON"); }
       else {u8g2.drawStr(3,64,"TRK POWER OFF"); }  //added 1/10/2025
-      //u8g2.drawStr(3,64,"TRK POWER OFF"); commented out 1/10/2025 
-      u8g2.drawHLine(0, 45, 128);
+  u8g2.drawHLine(0, 45, 128);
   u8g2.sendBuffer(); 
     
   timerOLED.start(interval_OLED);   /*--start sleep timer here for when HOUSEKEEP 
@@ -879,8 +878,8 @@ void runMAINMENU() {
     yardSelect = u8g2.userInterfaceSelectionList(
       "Select Yard", 
       1, 
-      "Wheeling\n"
-      "Parkersburg\n"
+      "Wheeling\n"    
+      "Parkersburg\n" 
       "Bayview\n"
       "Cumberland\n"
       "Test\n"
