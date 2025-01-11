@@ -87,13 +87,14 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 //This is a change in the code on the laptop
 
 /**********Staging yard "Map to number" Converion Table***************
-*             &Wheeling,    #0                                        *
+*             &Wheeling,    #0                                       *
 *            &Parkersburg, #1                                        *
 *            &Bayview,     #2                                        *
-*            &Cumberland,  #3                                       *
+*            &Cumberland,  #3                                        *
 *            &Test,        #4                                        *
 *            &Charleston,  #5                                        *
 *            &Curtis_Bay,  #6                                        *
+*            &WestStging,  #7                                        *
 *********************************************************************/
 
 //---------Variables written to EEPROM by "MENU" Function ------------
@@ -294,9 +295,29 @@ turnoutMap Curtis_Bay = {       // map #6
 /* trk W5   */  THROWN_S2,
 };
 
+turnoutMap WestStaging = {       // map #7
+             12,                 // numTracks
+             1,                 // startTrack
+             12,                 // defaultTrack
+             true,              // have reverse track?
+             "West Staging",    // mapName
+/* trk P0    */  0,
+/* trk WS1   */  0,
+/* trk WS2   */  THROWN_S3,
+/* trk WS3   */  THROWN_S2,
+/* trk WS4   */  THROWN_S2+THROWN_S4,
+/* trk WS5   */  THROWN_S2+THROWN_S4+THROWN_S5,
+/* trk WS6   */  THROWN_S2+THROWN_S4+THROWN_S5+THROWN_S6,
+/* trk WS7   */  THROWN_S1,
+/* trk WS8   */  THROWN_S1+THROWN_S7,
+/* trk WS9   */  THROWN_S1+THROWN_S7+THROWN_S8,
+/* trk WS10  */  THROWN_S1+THROWN_S7+THROWN_S8+THROWN_S9,
+/* trk WS11  */  THROWN_S1+THROWN_S7+THROWN_S8+THROWN_S9+THROWN_S10+THROWN_S11,
+/* trk RevL  */  THROWN_S1+THROWN_S7+THROWN_S8+THROWN_S9+THROWN_S10,
+};
 
 //--------------Map yard memory addresses with pointer for crntMap----
-const turnoutMap *mapData[7] = {
+const turnoutMap *mapData[8] = {
   &Wheeling,      // #0
   &Parkersburg,   // #1
   &Bayview,       // #2
@@ -304,6 +325,7 @@ const turnoutMap *mapData[7] = {
   &Test,          // #4
   &Charleston,    // #5
   &Curtis_Bay,    // #6
+  &WestStaging,   // #7
 };
 
 
@@ -456,7 +478,7 @@ void setup()
   encoderSw1.attachClick(click1);
   encoderSw1.attachDoubleClick(doubleclick1);
   encoderSw1.attachLongPressStart(longPressStart1);
-  encoderSw1.setPressTicks(6000);              //---set longPress delay to 6 seconds,
+  encoderSw1.setPressMs(6000);              //---set longPress delay to 6 seconds,
                                                //    Used to call menu function by
                                                //    holding the encoder switch down
 
@@ -563,13 +585,15 @@ void runHOUSEKEEP()
     
   u8g2.clearBuffer();
   tracknumChoiceText();
-  tracknumActiveTextSm();
+  //tracknumActiveTextSm();  commented out 1/10/2024
       u8g2.setFont(u8g2_font_helvB10_te);     
-      u8g2.drawStr(3,18, "NEW"); 
-      u8g2.setFont(u8g2_font_helvR08_te); 
-      u8g2.drawStr(3,35, "rotate to select");
-      u8g2.setFont(u8g2_font_helvB10_te); 
-      u8g2.drawStr(3,64,"ACTIVE");
+      u8g2.drawStr(3,18, "ROTATE"); 
+      //u8g2.setFont(u8g2_font_helvR08_te);   commented out 1/10/2025
+      u8g2.drawStr(3,35, "FOR TRK");
+      u8g2.setFont(u8g2_font_helvB10_te);
+      if (railPower == ON) {u8g2.drawStr(3,64,"TRK POWER ON"); }
+      else {u8g2.drawStr(3,64,"TRK POWER OFF"); }  //added 1/10/2025
+      //u8g2.drawStr(3,64,"TRK POWER OFF"); commented out 1/10/2025 
       u8g2.drawHLine(0, 45, 128);
   u8g2.sendBuffer(); 
     
@@ -590,9 +614,9 @@ void runSTAND_BY()
 //---Begin main do-while loop checking for user input--------
   do
   {    
-    if(timerOLED.done() == true){     //---check screen timer and put in
+    /*if(timerOLED.done() == true){     //---check screen timer and put in
       oledOff();                      //   sleep mode if time out
-    }
+    }*/  //---1/10/2025 - Commented out this if statement to keep sreen live at all times
 
     readEncoder();
     readAllSens();
@@ -681,8 +705,8 @@ void runTRACK_ACTIVE()
     u8g2.setFont(u8g2_font_helvB10_te);     
     u8g2.drawStr(3,18, "GO"); 
     u8g2.setFont(u8g2_font_helvB10_te); 
-    if (railPower == ON) {u8g2.drawStr(3,64,"TRK POWER: ON"); }
-    else {u8g2.drawStr(3,64,"TRK POWER: OFF"); }
+    if (railPower == ON) {u8g2.drawStr(3,64,"TRK POWER ON"); }
+    else {u8g2.drawStr(3,64,"TRK POWER OFF"); }
     u8g2.drawHLine(0, 45, 128);  
   u8g2.sendBuffer();
   
@@ -746,8 +770,8 @@ void runOCCUPIED()
       u8g2.setFont(u8g2_font_helvR08_te); 
       u8g2.drawStr(3,35, "Wait");
       u8g2.setFont(u8g2_font_helvB10_te); 
-      if (railPower == ON) {u8g2.drawStr(3,64,"TRK POWER: ON"); }
-      else {u8g2.drawStr(3,64,"TRK POWER: OFF"); }
+      if (railPower == ON) {u8g2.drawStr(3,64,"TRK POWER ON"); }
+      else {u8g2.drawStr(3,64,"TRK POWER OFF"); }
       u8g2.drawHLine(0, 45, 128); 
     u8g2.sendBuffer();
   }
@@ -797,13 +821,14 @@ void readEncoder()
 
     u8g2.clearBuffer();
       tracknumChoiceText();
-      tracknumActiveTextSm();
+      //tracknumActiveTextSm();  commented out 1/10/2024
       u8g2.setFont(u8g2_font_helvB10_te);     
-      u8g2.drawStr(3,18, "NEW"); 
-      u8g2.setFont(u8g2_font_helvR08_te); 
-      u8g2.drawStr(3,35, "click to select");
+      u8g2.drawStr(3,18, "ROTATE"); 
+      //u8g2.setFont(u8g2_font_helvR08_te); commented out 1/10/2024
+      u8g2.drawStr(3,35, "FOR TRK");
       u8g2.setFont(u8g2_font_helvB10_te); 
-      u8g2.drawStr(3,64,"ACTIVE");
+      //u8g2.drawStr(3,64,"ACTIVE");
+      u8g2.drawStr(3,64,"TRK POWER OFF");
       u8g2.drawHLine(0, 45, 128);  
     u8g2.sendBuffer();
     Serial.println("---------sendBuffer CHOICE");
@@ -861,10 +886,11 @@ void runMAINMENU() {
       "Test\n"
       "Charleston\n"
       "Curtis_Bay\n"
+      "WestStaging\n"
       "Cancel"
       );
 
-    if (yardSelect >= 1 && yardSelect < 8) {
+    if (yardSelect >= 1 && yardSelect < 9) {
       crntMapChoice = yardSelect - 1;
       runMAINMENU();
       
