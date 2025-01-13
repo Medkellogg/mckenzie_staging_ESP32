@@ -10,7 +10,7 @@
 // Designed for use on Jeroen Gerritsen's B&O McKenzie Div layout.
 // User controled remote panels are located on the fascia, connected 
 // to an ESP32 and H-bridge chips to drive the Tortoise switch machines, 
-// control track power, etc.  They are connected with a flat 8C modular 
+// control track power, etc.  They are connected with a flat 8C8P modular 
 // cable and RJ45 jacks.  A rotary encoder on the control panel is directly
 // connected to the ESP32 and the OLED uses I2C, both via the modular cable.
 //
@@ -27,7 +27,7 @@
 //      After "n" minutes or outbound train clears throat: track power off
 //      Double-click to stop timer and return to standby
 //      If more time is needed: the current track is displayed on the OLED, 
-//        user may single-click to select again for another "n" minutes 
+//      user may single-click to select again for another "n" minutes 
 //      After the timer expires the system will return to the standby screen
 //      Setup Mode can be entered by holding the click knob for 6 seconds
 
@@ -87,7 +87,7 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 //This is a change in the code on the laptop
 
 /**********Staging yard "Map to number" Converion Table***************
-*             &Wheeling,    #0                                       *
+*            &Wheeling,    #0                                       *
 *            &Parkersburg, #1                                        *
 *            &Bayview,     #2                                        *
 *            &Cumberland,  #3                                        *
@@ -271,7 +271,7 @@ turnoutMap Charleston = {       // map #5
              1,                 // startTrack
              1,                 // defaultTrack
              true,              // have reverse track?
-             "Charleston",        // mapName
+             "Charleston",      // mapName
 /* trk W0   */  0,
 /* trk W1   */  0,
 /* trk W2   */  THROWN_S1,
@@ -285,7 +285,7 @@ turnoutMap Curtis_Bay = {       // map #6
              5,                 // numTracks
              1,                 // startTrack
              1,                 // defaultTrack
-             false,              // have reverse track?
+             false,             // have reverse track?
              "Curtis Bay",      // mapName
 /* trk W0   */  0,
 /* trk W1   */  THROWN_S1,
@@ -297,10 +297,10 @@ turnoutMap Curtis_Bay = {       // map #6
 
 turnoutMap WestStaging = {       // map #7
              12,                 // numTracks
-             1,                 // startTrack
+             1,                  // startTrack
              12,                 // defaultTrack
-             true,              // have reverse track?
-             "West Staging",    // mapName
+             true,               // have reverse track?
+             "West Staging",     // mapName
 /* trk P0    */  0,
 /* trk WS1   */  0,
 /* trk WS2   */  THROWN_S3,
