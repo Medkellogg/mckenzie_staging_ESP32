@@ -587,9 +587,9 @@ void runHOUSEKEEP()
   tracknumChoiceText();
   //tracknumActiveTextSm();  commented out 1/10/2024
       u8g2.setFont(u8g2_font_helvB10_te);     
-      u8g2.drawStr(3,18, "ROTATE"); 
+      u8g2.drawStr(3,18, "PUSH TO"); 
       //u8g2.setFont(u8g2_font_helvR08_te);   commented out 1/10/2025
-      u8g2.drawStr(3,35, "FOR TRK");
+      u8g2.drawStr(3,35, "SELECT");
       u8g2.setFont(u8g2_font_helvB10_te);
       if (railPower == ON) {u8g2.drawStr(3,64,"TRK POWER ON"); }
       else {u8g2.drawStr(3,64,"TRK POWER OFF"); }  //added 1/10/2025
@@ -703,7 +703,8 @@ void runTRACK_ACTIVE()
   u8g2.clearBuffer();
     tracknumChoiceText();
     u8g2.setFont(u8g2_font_helvB10_te);     
-    u8g2.drawStr(3,18, "GO"); 
+    u8g2.drawStr(3,18, "START");
+    u8g2.drawStr(3,35, "NOW!"); 
     u8g2.setFont(u8g2_font_helvB10_te); 
     if (railPower == ON) {u8g2.drawStr(3,64,"TRK POWER ON"); }
     else {u8g2.drawStr(3,64,"TRK POWER OFF"); }
@@ -823,9 +824,9 @@ void readEncoder()
       tracknumChoiceText();
       //tracknumActiveTextSm();  commented out 1/10/2024
       u8g2.setFont(u8g2_font_helvB10_te);     
-      u8g2.drawStr(3,18, "ROTATE"); 
+      u8g2.drawStr(3,18, "PUSH TO"); 
       //u8g2.setFont(u8g2_font_helvR08_te); commented out 1/10/2024
-      u8g2.drawStr(3,35, "FOR TRK");
+      u8g2.drawStr(3,35, "SELECT");
       u8g2.setFont(u8g2_font_helvB10_te); 
       //u8g2.drawStr(3,64,"ACTIVE");
       u8g2.drawStr(3,64,"TRK POWER OFF");
