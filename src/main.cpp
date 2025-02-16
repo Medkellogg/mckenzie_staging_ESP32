@@ -79,7 +79,7 @@
 #include <EEPROM.h>
 #include <U8g2lib.h>
 
-#define swVer "v2.5 - (1/11/2025)"
+#define swVer "v2.6 - (2/15/2025)"
 
 //---Constructor for OLED screen
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
@@ -88,6 +88,7 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 
 /**********Staging yard "Map to number" Converion Table***************
 *            &Wheeling,    #0                                       *
+
 *            &Parkersburg, #1                                        *
 *            &Bayview,     #2                                        *
 *            &Cumberland,  #3                                        *
