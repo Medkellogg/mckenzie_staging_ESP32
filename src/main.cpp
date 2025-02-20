@@ -79,7 +79,7 @@
 #include <EEPROM.h>
 #include <U8g2lib.h>
 
-#define swVer "v2.6 - (2/15/2025)"
+#define swVer "v2.7 - (2/19/2025)"
 
 //---Constructor for OLED screen
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
@@ -588,12 +588,12 @@ void runHOUSEKEEP()
   tracknumChoiceText();
   
       u8g2.setFont(u8g2_font_helvB10_te);     
-      u8g2.drawStr(3,18, "PUSH TO"); 
+      u8g2.drawStr(3,18, "Rotate"); 
       //u8g2.setFont(u8g2_font_helvR08_te);   commented out 1/10/2025
-      u8g2.drawStr(3,35, "SELECT");
+      u8g2.drawStr(3,35, "to select");
       u8g2.setFont(u8g2_font_helvB10_te);
-      if (railPower == ON) {u8g2.drawStr(3,64,"TRK POWER ON"); }
-      else {u8g2.drawStr(3,64,"TRK POWER OFF"); }  //added 1/10/2025
+      /*if (railPower == ON) {*/u8g2.drawStr(3,61,"Push to activate"); /*/}
+      //else {u8g2.drawStr(3,64,"TRK POWER OFF"); } */ //added 1/10/2025
   u8g2.drawHLine(0, 45, 128);
   u8g2.sendBuffer(); 
     
@@ -657,9 +657,9 @@ void runTRACK_SETUP()
   u8g2.clearBuffer();
   tracknumChoiceText();
     u8g2.setFont(u8g2_font_helvB10_te);     
-    u8g2.drawStr(3,18, "WAIT"); 
+    u8g2.drawStr(3,18, "Wait:"); 
     u8g2.setFont(u8g2_font_helvB10_te); 
-    u8g2.drawStr(3,64,"ALIGNING");
+    u8g2.drawStr(3,61, "Aligning route");
     u8g2.drawHLine(0, 45, 128);
   u8g2.sendBuffer();
   
@@ -703,11 +703,11 @@ void runTRACK_ACTIVE()
   u8g2.clearBuffer();
     tracknumChoiceText();
     u8g2.setFont(u8g2_font_helvB10_te);     
-    u8g2.drawStr(3,18, "START");
-    u8g2.drawStr(3,35, "NOW!"); 
+    u8g2.drawStr(3,18, "Start");
+    u8g2.drawStr(3,35, "now!"); 
     u8g2.setFont(u8g2_font_helvB10_te); 
-    if (railPower == ON) {u8g2.drawStr(3,64,"TRK POWER ON"); }
-    else {u8g2.drawStr(3,64,"TRK POWER OFF"); }
+    if (railPower == ON) {u8g2.drawStr(3,61,"Track power ON"); }
+    else {u8g2.drawStr(3,61,"Track power OFF"); }
     u8g2.drawHLine(0, 45, 128);  
   u8g2.sendBuffer();
   
@@ -767,12 +767,12 @@ void runOCCUPIED()
 
     u8g2.clearBuffer();
       u8g2.setFont(u8g2_font_helvB10_te);     
-      u8g2.drawStr(3,18, "TRACK IS BUSY"); 
+      u8g2.drawStr(3,18, "Track is busy"); 
       u8g2.setFont(u8g2_font_helvR08_te); 
-      u8g2.drawStr(3,35, "Wait");
+      u8g2.drawStr(3,35, "wait");
       u8g2.setFont(u8g2_font_helvB10_te); 
-      if (railPower == ON) {u8g2.drawStr(3,64,"TRK POWER ON"); }
-      else {u8g2.drawStr(3,64,"TRK POWER OFF"); }
+      if (railPower == ON) {u8g2.drawStr(3,61,"Track power ON"); }
+      else {u8g2.drawStr(3,61,"Track power OFF"); }
       u8g2.drawHLine(0, 45, 128); 
     u8g2.sendBuffer();
   }
@@ -824,12 +824,12 @@ void readEncoder()
       tracknumChoiceText();
       //tracknumActiveTextSm();  commented out 1/10/2024
       u8g2.setFont(u8g2_font_helvB10_te);     
-      u8g2.drawStr(3,18, "PUSH TO"); 
+      u8g2.drawStr(3,18, "Rotate"); 
       //u8g2.setFont(u8g2_font_helvR08_te); commented out 1/10/2024
-      u8g2.drawStr(3,35, "SELECT");
+      u8g2.drawStr(3,35, "to select");
       u8g2.setFont(u8g2_font_helvB10_te); 
       //u8g2.drawStr(3,64,"ACTIVE");
-      u8g2.drawStr(3,64,"TRK POWER OFF");
+      u8g2.drawStr(3,61,"Push to activate");
       u8g2.drawHLine(0, 45, 128);  
     u8g2.sendBuffer();
     Serial.println("---------sendBuffer CHOICE");
